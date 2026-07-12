@@ -49,6 +49,11 @@
     <div class="ledger-row" style="margin-top: 0.75rem;"><span>Subtotal</span><span class="amt" id="result-subtotal">$0.00</span></div>
     <div class="ledger-row"><span>Tax</span><span class="amt" id="result-tax">$0.00</span></div>
     <div class="ledger-row grand"><span>Total</span><span class="amt" id="result-total">$0.00</span></div>
+    <button class="btn btn-text hidden" id="share-native-btn" onclick="shareReceipt()" style="margin-top: 1rem;">Share →</button>
+    <div class="share-row" id="share-row" style="display:none;">
+      <button class="btn btn-copy" id="copy-receipt-btn" onclick="copyReceiptText()">Copy Summary</button>
+      <button class="btn btn-ghost" onclick="textReceipt()">Text Instead</button>
+    </div>
   </div>
 
   <a class="btn btn-ghost" id="split-instead-link" href="/split" style="display:none; margin-top: 1rem; text-align:center; text-decoration:none;">Need to split this with someone? →</a>
@@ -82,7 +87,10 @@ function scanReceipt(event) {
     });
 }
 
+let lastScannedData = null;
+
 function renderResult(data) {
+  lastScannedData = data;
   document.getElementById('result-restaurant').textContent = data.restaurant_name || 'Receipt';
   document.getElementById('items-list').innerHTML = (data.items || []).map(item => `
     <div class="scanned-item-row">
@@ -94,7 +102,57 @@ function renderResult(data) {
   document.getElementById('result-tax').textContent = '$' + (data.tax || 0).toFixed(2);
   document.getElementById('result-total').textContent = '$' + (data.total || 0).toFixed(2);
   document.getElementById('result-card').style.display = 'block';
+  document.getElementById('share-row').style.display = 'flex';
   document.getElementById('split-instead-link').style.display = 'block';
+
+  // Native share (opens the phone's real share sheet — Messages, WhatsApp,
+  // email, AirDrop, whatever's installed) when the browser supports it.
+  // Falls back to Copy/Text buttons everywhere else.
+  if (navigator.share) {
+    document.getElementById('share-native-btn').classList.remove('hidden');
+  }
+}
+
+function shareReceipt() {
+  const text = buildReceiptSummary();
+  const title = (lastScannedData && lastScannedData.restaurant_name) || 'Receipt';
+  navigator.share({ title, text }).catch(() => {
+    // User cancelled the share sheet, or the browser rejected it — no
+    // error needed, they can still use Copy/Text below.
+  });
+}
+
+function copyReceiptText() {
+  const text = buildReceiptSummary();
+  const btn = document.getElementById('copy-receipt-btn');
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = 'Copied ✓';
+    setTimeout(() => { btn.textContent = 'Copy Summary'; }, 2000);
+  }).catch(() => alert(text));
+}
+
+function textReceipt() {
+  const message = buildReceiptSummary();
+  const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+  const smsUrl = isIOS
+    ? `sms:&body=${encodeURIComponent(message)}`
+    : `sms:?body=${encodeURIComponent(message)}`;
+  window.location.href = smsUrl;
+}
+
+function buildReceiptSummary() {
+  if (!lastScannedData) return '';
+  const d = lastScannedData;
+  let lines = [`${d.restaurant_name || 'Receipt'}`];
+  (d.items || []).forEach(item => {
+    const qty = item.quantity > 1 ? ` ×${item.quantity}` : '';
+    lines.push(`${item.name}${qty} — $${item.price.toFixed(2)}`);
+  });
+  lines.push('');
+  lines.push(`Subtotal: $${(d.subtotal || 0).toFixed(2)}`);
+  lines.push(`Tax: $${(d.tax || 0).toFixed(2)}`);
+  lines.push(`Total: $${(d.total || 0).toFixed(2)}`);
+  return lines.join('\n');
 }
 </script>
 </body>
