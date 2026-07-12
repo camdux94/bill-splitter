@@ -88,13 +88,14 @@
       <div class="page-title" id="pay-page-amount">$0.00</div>
       <p class="page-sub" id="pay-page-restaurant"></p>
     </div>
+    <div id="method-confirmation"></div>
     <div class="card">
       <div id="pay-page-links"></div>
     </div>
     <div class="card">
       <div class="pay-method-label">Apple Cash</div>
       <p class="hint" style="margin-top: 0; margin-bottom: 0.75rem;">Apple Cash can't be prefilled from outside Messages — enter your number and whoever's collecting can request the exact amount from you directly.</p>
-      <div id="apple-cash-status"></div>
+      <div id="apple-cash-number-hint"></div>
       <input type="tel" id="apple-cash-number" class="field" placeholder="Your phone number" style="margin-bottom: 0.5rem;" />
       <button class="btn btn-ghost" id="apple-cash-submit-btn" onclick="submitAppleCash()">I'll pay with Apple Cash</button>
     </div>
@@ -144,6 +145,7 @@ function refreshData() {
       }
       billData = data;
       document.getElementById('restaurant-title').textContent = data.restaurant_name;
+      saveRecentBillVisit(billId, data.restaurant_name);
 
       const myClaims = data.claims.filter(c => c.person === currentPerson).map(c => c.item_id);
       selectedItems = new Set(myClaims);
@@ -289,6 +291,28 @@ function updateMyTotals() {
     : '';
 }
 
+let wasAllPaid = false;
+
+function celebrateAllPaid() {
+  const emojis = ['🎉', '💸', '✅', '🎊', '💰'];
+  const overlay = document.createElement('div');
+  overlay.className = 'confetti-overlay';
+  document.body.appendChild(overlay);
+
+  for (let i = 0; i < 24; i++) {
+    const piece = document.createElement('span');
+    piece.className = 'confetti-piece';
+    piece.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+    piece.style.left = Math.random() * 100 + 'vw';
+    piece.style.animationDuration = (2 + Math.random() * 1.5) + 's';
+    piece.style.animationDelay = (Math.random() * 0.5) + 's';
+    piece.style.fontSize = (16 + Math.random() * 16) + 'px';
+    overlay.appendChild(piece);
+  }
+
+  setTimeout(() => overlay.remove(), 4000);
+}
+
 function renderTallySummary() {
   const summaryEl = document.getElementById('tally-summary');
   const people = Object.keys(billData.people);
@@ -307,7 +331,11 @@ function renderTallySummary() {
     summaryEl.innerHTML = `
       <div class="summary-status all-paid">Everyone's paid ✓</div>
       <div class="hint">All ${people.length} people are settled up.</div>
+      <a class="btn" style="margin-top: 1rem; display: block; text-align: center; text-decoration: none;" href="/">Start a New Bill</a>
     `;
+    if (!wasAllPaid) {
+      celebrateAllPaid();
+    }
   } else {
     summaryEl.innerHTML = `
       <div class="summary-status">${paidPeople.length} of ${people.length} paid</div>
@@ -315,6 +343,7 @@ function renderTallySummary() {
       <div class="hint">Still waiting on: ${unpaidPeople.join(', ')}</div>
     `;
   }
+  wasAllPaid = allPaid;
 }
 
 function renderTally() {
@@ -408,12 +437,33 @@ function openPayLink(event, url) {
   return false;
 }
 
+const methodDisplayNames = { venmo: 'Venmo', cashapp: 'Cash App', zelle: 'Zelle', apple_cash: 'Apple Cash' };
+
+function updateAppleCashHint() {
+  const me = billData ? billData.people[currentPerson] : null;
+  const hintEl = document.getElementById('apple-cash-number-hint');
+  if (me && me.apple_cash_number) {
+    hintEl.innerHTML = `<div class="hint">On file: ${me.apple_cash_number} — the collector can request from this number.</div>`;
+  } else {
+    hintEl.innerHTML = '';
+  }
+}
+
+function showMethodConfirmation(method) {
+  const label = methodDisplayNames[method] || method;
+  document.getElementById('method-confirmation').innerHTML =
+    `<div class="method-confirmed-banner">✓ Marked — the collector will see you're paying via ${label}.</div>`;
+}
+
 function selectPaymentMethod(event, method, url) {
   fetch('/bill/' + billId + '/payment-method', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ person: currentPerson, method })
-  }).then(() => refreshData());
+  }).then(() => {
+    refreshData();
+    showMethodConfirmation(method);
+  });
   return openPayLink(event, url);
 }
 
@@ -425,7 +475,7 @@ function selectZelle(event) {
     body: JSON.stringify({ person: currentPerson, method: 'zelle' })
   }).then(() => {
     refreshData();
-    openPayPage();
+    showMethodConfirmation('zelle');
   });
 }
 
@@ -477,13 +527,8 @@ function openPayPage() {
     linksWrap.innerHTML = html;
   }
 
-  // Show whether they've already submitted a number for Apple Cash
-  const statusEl = document.getElementById('apple-cash-status');
-  if (me && me.apple_cash_number) {
-    statusEl.innerHTML = `<div class="apple-cash-confirmed">✓ Saved — ${me.apple_cash_number} is visible to whoever's collecting on their Group Tally tab. They'll request the money from you directly in Messages.</div>`;
-  } else {
-    statusEl.innerHTML = '';
-  }
+  document.getElementById('method-confirmation').innerHTML = '';
+  updateAppleCashHint();
 
   document.getElementById('page-header').classList.add('hidden');
   document.getElementById('main-content').classList.add('hidden');
@@ -498,7 +543,7 @@ function submitAppleCash() {
 
   const btn = document.getElementById('apple-cash-submit-btn');
   btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span>Saving...';
+  btn.innerHTML = '<span class="spinner"></span>Marking...';
 
   fetch('/bill/' + billId + '/apple-cash', {
     method: 'POST',
@@ -510,13 +555,14 @@ function submitAppleCash() {
     btn.disabled = false;
     if (!ok) {
       btn.textContent = "I'll pay with Apple Cash";
-      alert(body.error || 'Could not save your number.');
+      alert(body.error || 'Could not mark your payment method.');
       return;
     }
-    btn.textContent = 'Saved ✓';
+    btn.textContent = 'Marked ✓';
     document.getElementById('apple-cash-number').value = '';
     refreshData();
-    openPayPage();
+    showMethodConfirmation('apple_cash');
+    updateAppleCashHint();
     setTimeout(() => { btn.textContent = "I'll pay with Apple Cash"; }, 2500);
   });
 }
@@ -528,6 +574,24 @@ function closePayPage() {
   document.getElementById('bottom-bar-wrap').classList.remove('hidden');
   refreshPaused = false;
   refreshData();
+}
+
+const RECENT_BILLS_KEY = 'recent_bills';
+const RECENT_BILLS_MAX = 15;
+let recentBillSaved = false;
+
+function saveRecentBillVisit(billId, name) {
+  if (recentBillSaved) return; // avoid rewriting on every 4s poll
+  recentBillSaved = true;
+
+  let recent = [];
+  try { recent = JSON.parse(localStorage.getItem(RECENT_BILLS_KEY)) || []; } catch (e) { recent = []; }
+
+  recent = recent.filter(b => b.bill_id !== billId);
+  recent.unshift({ bill_id: billId, name: name || 'Bill', url: window.location.href, timestamp: Date.now() });
+  recent = recent.slice(0, RECENT_BILLS_MAX);
+
+  localStorage.setItem(RECENT_BILLS_KEY, JSON.stringify(recent));
 }
 
 setInterval(() => { if (currentPerson && !refreshPaused) refreshData(); }, 4000);
