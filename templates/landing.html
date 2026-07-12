@@ -52,12 +52,6 @@
     <p class="page-sub">Quick tools for splitting bills, figuring tips, and checking tax — right from your phone.</p>
   </div>
 
-  <div class="card recent-bills-card hidden" id="recent-bills-card">
-    <div class="section-label">Recent bills on this device</div>
-    <div id="recent-bills-list"></div>
-    <p class="hint" style="margin-top: 0.5rem;">This list only lives on this phone — it's not synced anywhere.</p>
-  </div>
-
   <div class="tool-grid">
     <a class="tool-button" href="/split">
       <div class="tool-icon-badge">🧾</div>
@@ -87,15 +81,21 @@
       <div class="tool-icon-badge">📷</div>
       <div class="tool-text">
         <div class="tool-name">Scan a Receipt</div>
-        <div class="tool-desc">Just want the itemized total — no splitting needed</div>
+        <div class="tool-desc">Get the itemized total and text it to the group — no splitting math needed</div>
       </div>
       <div class="tool-arrow">→</div>
     </a>
   </div>
 
+  <div class="card recent-bills-card hidden" id="recent-bills-card">
+    <div class="section-label">Recent bills on this device</div>
+    <div id="recent-bills-list"></div>
+    <p class="hint" style="margin-top: 0.5rem;">This list only lives on this phone — it's not synced anywhere.</p>
+  </div>
+
   <div class="share-section">
     <div class="page-title-small">Share this with friends</div>
-    <p>Anyone can use Split — no App Store, no download. Send them this page, then have them tap Share → Add to Home Screen in Safari to save it like an app.</p>
+    <p>Anyone can use Split — no App Store, no download. Send them this page, then have them save it like an app: in Safari, tap Share → Add to Home Screen. In Chrome, tap the menu (⋮) → Add to Home Screen (or Install app).</p>
     <button class="btn" onclick="shareApp()">Share Split</button>
   </div>
 </div>
@@ -123,10 +123,54 @@ function renderRecentBills() {
   if (recent.length === 0) return;
 
   document.getElementById('recent-bills-card').classList.remove('hidden');
-  document.getElementById('recent-bills-list').innerHTML = recent.map(b => {
+  const listEl = document.getElementById('recent-bills-list');
+
+  // Render immediately with what we already know (name + date), then fill
+  // in live total/paid-status per bill as each fetch comes back — avoids
+  // blocking the whole list on the slowest request.
+  listEl.innerHTML = recent.map(b => {
     const date = new Date(b.timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-    return `<a class="recent-bill-row" href="${b.url}"><span>${b.name}</span><span class="recent-bill-date">${date}</span></a>`;
+    return `
+      <a class="recent-bill-row-rich" href="${b.url}" id="recent-bill-${b.bill_id}">
+        <div class="recent-bill-top">
+          <span>${b.name}</span>
+          <span class="recent-bill-date">${date}</span>
+        </div>
+        <div class="recent-bill-loading hint">Loading...</div>
+      </a>
+    `;
   }).join('');
+
+  recent.forEach(b => {
+    fetch('/bill/' + b.bill_id + '/data')
+      .then(res => res.json())
+      .then(data => {
+        if (data.error) return;
+        const row = document.getElementById('recent-bill-' + b.bill_id);
+        if (!row) return;
+
+        const people = Object.keys(data.people || {});
+        const grandTotal = people.reduce((sum, p) => sum + data.people[p].total, 0);
+
+        const chips = people.map(p => {
+          const paid = data.people[p].paid;
+          return `<span class="person-chip ${paid ? 'paid' : ''}">${paid ? '✓ ' : ''}${p}</span>`;
+        }).join('');
+
+        const loadingEl = row.querySelector('.recent-bill-loading');
+        loadingEl.outerHTML = `
+          <div class="recent-bill-amount">$${grandTotal.toFixed(2)} total</div>
+          <div class="recent-bill-people">${chips || '<span class="hint">No one has claimed anything yet</span>'}</div>
+        `;
+      })
+      .catch(() => {
+        const row = document.getElementById('recent-bill-' + b.bill_id);
+        if (row) {
+          const loadingEl = row.querySelector('.recent-bill-loading');
+          if (loadingEl) loadingEl.textContent = '';
+        }
+      });
+  });
 }
 
 renderRecentBills();
