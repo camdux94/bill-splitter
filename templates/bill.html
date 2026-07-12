@@ -63,10 +63,19 @@
   <div id="error-wrap"></div>
 </div>
 
+<div class="pay-sheet hidden" id="pay-sheet">
+  <div class="pay-sheet-inner">
+    <div class="section-label">Pay your share</div>
+    <div id="pay-sheet-links"></div>
+    <button class="btn btn-ghost" style="margin-top: 10px;" onclick="closePaySheet()">Close</button>
+  </div>
+</div>
+
 <div class="bottom-bar-wrap hidden" id="bottom-bar-wrap">
   <div class="torn-edge"></div>
   <div class="bottom-bar">
     <div class="info">You owe<span class="amt" id="bar-total">$0.00</span></div>
+    <button class="btn" id="pay-btn" onclick="openPaySheet()">Pay</button>
   </div>
 </div>
 
@@ -207,12 +216,6 @@ function renderTally() {
   }
   list.innerHTML = people.map(person => {
     const p = billData.people[person];
-    const links = p.payment_links;
-    let payLinksHtml = '';
-    if (links.venmo) payLinksHtml += `<a class="pay-link venmo" href="${links.venmo}" onclick="return openPayLink(event, '${links.venmo}')">Venmo</a>`;
-    if (links.cashapp) payLinksHtml += `<a class="pay-link" href="${links.cashapp}" onclick="return openPayLink(event, '${links.cashapp}')">Cash App</a>`;
-    if (links.zelle) payLinksHtml += `<span class="pay-link">Zelle: ${links.zelle.handle}</span>`;
-
     const stamp = p.paid ? '<div class="stamp-paid">Paid</div>' : '';
 
     return `
@@ -224,7 +227,6 @@ function renderTally() {
         </div>
         <div class="person-meta">subtotal $${p.subtotal.toFixed(2)} + tax $${p.tax_share.toFixed(2)} + tip $${p.tip.toFixed(2)} (${p.tip_percent}%)</div>
         <div class="pay-links">
-          ${payLinksHtml}
           <button class="paid-toggle ${p.paid ? 'is-paid' : ''}" onclick="togglePaid('${person}', ${!p.paid})">${p.paid ? '✓ Paid' : 'Mark as paid'}</button>
         </div>
       </div>
@@ -248,6 +250,31 @@ function openPayLink(event, url) {
   window.open(url, '_blank');
   setTimeout(() => { refreshPaused = false; }, 1500);
   return false;
+}
+
+function openPaySheet() {
+  const me = billData ? billData.people[currentPerson] : null;
+  const linksWrap = document.getElementById('pay-sheet-links');
+
+  if (!me) {
+    linksWrap.innerHTML = '<div class="hint">Claim at least one item first so we know what you owe.</div>';
+  } else {
+    const links = me.payment_links;
+    let html = '';
+    if (links.venmo) html += `<a class="pay-link venmo" href="${links.venmo}" onclick="return openPayLink(event, '${links.venmo}')">Pay $${me.total.toFixed(2)} with Venmo</a>`;
+    if (links.cashapp) html += `<a class="pay-link" href="${links.cashapp}" onclick="return openPayLink(event, '${links.cashapp}')">Pay $${me.total.toFixed(2)} with Cash App</a>`;
+    if (links.zelle) html += `<div class="zelle-info">Zelle ${links.zelle.handle} — $${me.total.toFixed(2)}</div>`;
+    if (!html) html = '<div class="hint">Whoever created this bill didn\'t add a payment method yet.</div>';
+    linksWrap.innerHTML = html;
+  }
+
+  document.getElementById('pay-sheet').classList.remove('hidden');
+  refreshPaused = true;
+}
+
+function closePaySheet() {
+  document.getElementById('pay-sheet').classList.add('hidden');
+  refreshPaused = false;
 }
 
 setInterval(() => { if (currentPerson && !refreshPaused) refreshData(); }, 4000);
