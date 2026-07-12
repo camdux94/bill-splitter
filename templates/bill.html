@@ -8,6 +8,13 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/static/style.css">
+<link rel="manifest" href="/static/manifest.json">
+<link rel="apple-touch-icon" href="/static/icon-180.png">
+<link rel="icon" type="image/png" href="/static/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Split">
+<meta name="theme-color" content="#2F6F5E">
 </head>
 <body>
 <div class="container">
@@ -91,6 +98,7 @@ function switchTab(tab) {
   document.getElementById('tab-tally').classList.toggle('active', tab === 'tally');
   document.getElementById('panel-order').classList.toggle('hidden', tab !== 'order');
   document.getElementById('panel-tally').classList.toggle('hidden', tab !== 'tally');
+  document.getElementById('bottom-bar-wrap').classList.toggle('hidden', tab === 'tally');
 }
 
 function loadMySelections() {
@@ -235,11 +243,25 @@ function renderTally() {
 }
 
 function togglePaid(person, paid) {
+  let pin = '';
+  if (billData && billData.requires_pin) {
+    pin = window.prompt("Enter the collector's PIN to update payment status:");
+    if (pin === null) return; // cancelled
+  }
+
   fetch('/bill/' + billId + '/paid', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ person, paid })
-  }).then(() => refreshData());
+    body: JSON.stringify({ person, paid, pin })
+  })
+  .then(res => res.json().then(body => ({ ok: res.ok, body })))
+  .then(({ ok, body }) => {
+    if (!ok) {
+      alert(body.error || 'Could not update payment status.');
+      return;
+    }
+    refreshData();
+  });
 }
 
 let refreshPaused = false;

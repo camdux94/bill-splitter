@@ -8,6 +8,13 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/static/style.css">
+<link rel="manifest" href="/static/manifest.json">
+<link rel="apple-touch-icon" href="/static/icon-180.png">
+<link rel="icon" type="image/png" href="/static/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Split">
+<meta name="theme-color" content="#2F6F5E">
 <style>
   .receipt-icon { font-size: 26px; }
   .skip-link {
@@ -75,7 +82,13 @@
       <div class="field"><label>Venmo username</label><input type="text" id="venmo-handle" placeholder="e.g. cam-hall" /></div>
       <div class="field"><label>Cash App $cashtag</label><input type="text" id="cashapp-handle" placeholder="e.g. camhall" /></div>
       <div class="field"><label>Zelle (email or phone)</label><input type="text" id="zelle-handle" placeholder="e.g. cam@email.com" /></div>
-      <div class="hint">Leave any blank to skip that option — everyone still sees the total either way.</div>
+      <div class="hint" style="margin-bottom: 0.75rem;">Leave any blank to skip that option — everyone still sees the total either way.</div>
+
+      <div class="field">
+        <label>Collector PIN (optional)</label>
+        <input type="text" class="mono" id="collector-pin" placeholder="e.g. 4271" inputmode="numeric" />
+      </div>
+      <div class="hint">Set a PIN if you want to be the only one who can mark payments as received. Leave blank and anyone can mark items paid.</div>
     </div>
     <div id="create-error"></div>
   </div>
@@ -252,6 +265,7 @@ function createBill() {
   const venmo_handle = document.getElementById('venmo-handle').value.trim();
   const cashapp_handle = document.getElementById('cashapp-handle').value.trim();
   const zelle_handle = document.getElementById('zelle-handle').value.trim();
+  const collector_pin = document.getElementById('collector-pin').value.trim();
 
   document.getElementById('create-error').innerHTML = '';
 
@@ -262,7 +276,7 @@ function createBill() {
   fetch('/create-bill', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ restaurant_name, items, tax, venmo_handle, cashapp_handle, zelle_handle })
+    body: JSON.stringify({ restaurant_name, items, tax, venmo_handle, cashapp_handle, zelle_handle, collector_pin })
   })
   .then(res => res.json())
   .then(data => {
