@@ -24,6 +24,15 @@
     <p class="page-sub">Enter your name, tap what you had, set your tip.</p>
   </div>
 
+  <div class="card install-banner hidden" id="install-banner">
+    <div class="install-banner-text">
+      <strong>Tip:</strong> this isn't an App Store app — it's a website that works like one. Tap
+      <span class="share-icon">􀈂</span> at the bottom of Safari, then <strong>Add to Home Screen</strong>,
+      and it'll sit on your phone with its own icon like a real app.
+    </div>
+    <button class="install-banner-dismiss" onclick="dismissInstallBanner()">Got it</button>
+  </div>
+
   <div class="card" id="name-card">
     <div class="section-label">Your name</div>
     <input type="text" id="person-name-input" class="field" placeholder="e.g. Cameron" />
@@ -60,6 +69,9 @@
     </div>
 
     <div id="panel-tally" class="hidden">
+      <div class="card" id="tally-summary-card">
+        <div id="tally-summary"></div>
+      </div>
       <div class="card">
         <div class="section-label">Everyone's tally</div>
         <div id="people-list"></div>
@@ -78,6 +90,13 @@
     </div>
     <div class="card">
       <div id="pay-page-links"></div>
+    </div>
+    <div class="card">
+      <div class="pay-method-label">Apple Cash</div>
+      <p class="hint" style="margin-top: 0; margin-bottom: 0.75rem;">Apple Cash can't be prefilled from outside Messages — enter your number and whoever's collecting can request the exact amount from you directly.</p>
+      <div id="apple-cash-status"></div>
+      <input type="tel" id="apple-cash-number" class="field" placeholder="Your phone number" style="margin-bottom: 0.5rem;" />
+      <button class="btn btn-ghost" onclick="submitAppleCash()">I'll pay with Apple Cash</button>
     </div>
     <button class="btn btn-ghost" onclick="closePayPage()">← Back</button>
   </div>
@@ -131,6 +150,7 @@ function refreshData() {
 
       renderItems();
       renderTally();
+      renderTallySummary();
       updateMyTotals();
     });
 }
@@ -269,6 +289,34 @@ function updateMyTotals() {
     : '';
 }
 
+function renderTallySummary() {
+  const summaryEl = document.getElementById('tally-summary');
+  const people = Object.keys(billData.people);
+
+  if (people.length === 0) {
+    summaryEl.innerHTML = '<div class="hint">No one has claimed any items yet.</div>';
+    return;
+  }
+
+  const paidPeople = people.filter(p => billData.people[p].paid);
+  const unpaidPeople = people.filter(p => !billData.people[p].paid);
+  const outstanding = unpaidPeople.reduce((sum, p) => sum + billData.people[p].total, 0);
+  const allPaid = unpaidPeople.length === 0;
+
+  if (allPaid) {
+    summaryEl.innerHTML = `
+      <div class="summary-status all-paid">Everyone's paid ✓</div>
+      <div class="hint">All ${people.length} people are settled up.</div>
+    `;
+  } else {
+    summaryEl.innerHTML = `
+      <div class="summary-status">${paidPeople.length} of ${people.length} paid</div>
+      <div class="summary-outstanding">$${outstanding.toFixed(2)} <span>outstanding</span></div>
+      <div class="hint">Still waiting on: ${unpaidPeople.join(', ')}</div>
+    `;
+  }
+}
+
 function renderTally() {
   const list = document.getElementById('people-list');
   const people = Object.keys(billData.people);
@@ -280,6 +328,25 @@ function renderTally() {
     const p = billData.people[person];
     const stamp = p.paid ? '<div class="stamp-paid">Paid</div>' : '';
 
+    const appleCashHtml = p.apple_cash_number
+      ? `<a class="pay-link" href="sms:${p.apple_cash_number}" onclick="return openPayLink(event, 'sms:${p.apple_cash_number}')">Request $${p.total.toFixed(2)} via Apple Cash — ${p.apple_cash_number}</a>`
+      : '';
+
+    // Build the list of items this person is on the hook for, noting
+    // when an item is split with someone else and what their actual share is.
+    const myItems = billData.items.filter(item =>
+      billData.claims.some(c => c.item_id === item.item_id && c.person === person)
+    );
+    const itemsHtml = myItems.length
+      ? '<div class="person-items">' + myItems.map(item => {
+          const claimers = billData.claims.filter(c => c.item_id === item.item_id).map(c => c.person);
+          const others = claimers.filter(p2 => p2 !== person);
+          const share = item.price / claimers.length;
+          const label = others.length ? `${item.name} (split with ${others.join(', ')})` : item.name;
+          return `<div class="person-item-row"><span>${label}</span><span class="amt">$${share.toFixed(2)}</span></div>`;
+        }).join('') + '</div>'
+      : '';
+
     return `
       <div class="person-card ${p.paid ? 'paid' : ''}">
         ${stamp}
@@ -287,8 +354,10 @@ function renderTally() {
           <div class="person-name">${person}</div>
           <div class="person-amount">$${p.total.toFixed(2)}</div>
         </div>
+        ${itemsHtml}
         <div class="person-meta">subtotal $${p.subtotal.toFixed(2)} + tax $${p.tax_share.toFixed(2)} + tip $${p.tip.toFixed(2)} (${p.tip_percent}%)</div>
         <div class="pay-links">
+          ${appleCashHtml}
           <button class="paid-toggle ${p.paid ? 'is-paid' : ''}" onclick="togglePaid('${person}', ${!p.paid})">${p.paid ? '✓ Paid' : 'Mark as paid'}</button>
         </div>
       </div>
@@ -348,16 +417,29 @@ function openPayPage() {
     let html = '';
 
     if (links.venmo) {
-      html += `<a class="pay-link venmo" href="${links.venmo}" onclick="return openPayLink(event, '${links.venmo}')">Pay with Venmo — opens prefilled</a>`;
+      html += `
+        <div class="pay-method">
+          <div class="pay-method-label">Venmo</div>
+          <a class="pay-link venmo" href="${links.venmo}" onclick="return openPayLink(event, '${links.venmo}')">Pay $${me.total.toFixed(2)} — opens prefilled</a>
+        </div>
+      `;
     }
     if (links.cashapp) {
       html += `
-        <div class="zelle-info">Send <strong>$${links.cashapp.amount}</strong> to Cash App handle <strong>${links.cashapp.handle}</strong></div>
-        <a class="pay-link cashapp-link" href="${links.cashapp.profile_url}" onclick="return openPayLink(event, '${links.cashapp.profile_url}')">Open Cash App →</a>
+        <div class="pay-method-boxed">
+          <div class="pay-method-label">Cash App</div>
+          <div class="pay-method-text">Send $${links.cashapp.amount} to Cash App handle $${links.cashapp.handle}</div>
+          <a class="pay-link cashapp-link" href="${links.cashapp.profile_url}" onclick="return openPayLink(event, '${links.cashapp.profile_url}')">Open Cash App →</a>
+        </div>
       `;
     }
     if (links.zelle) {
-      html += `<div class="zelle-info">Zelle ${links.zelle.handle} — send $${links.zelle.amount}</div>`;
+      html += `
+        <div class="pay-method">
+          <div class="pay-method-label">Zelle</div>
+          <div class="pay-method-detail">${links.zelle.handle} — send $${links.zelle.amount}</div>
+        </div>
+      `;
     }
     if (!links.venmo && !links.cashapp && !links.zelle) {
       html = '<div class="hint">Whoever created this bill didn\'t add a payment method yet.</div>';
@@ -367,11 +449,37 @@ function openPayPage() {
     linksWrap.innerHTML = html;
   }
 
+  // Show whether they've already submitted a number for Apple Cash
+  const statusEl = document.getElementById('apple-cash-status');
+  if (me && me.apple_cash_number) {
+    statusEl.innerHTML = `<div class="hint">You've shared ${me.apple_cash_number} — whoever's collecting can request from you directly.</div>`;
+  } else {
+    statusEl.innerHTML = '';
+  }
+
   document.getElementById('page-header').classList.add('hidden');
   document.getElementById('main-content').classList.add('hidden');
   document.getElementById('bottom-bar-wrap').classList.add('hidden');
   document.getElementById('pay-page').classList.remove('hidden');
   refreshPaused = true;
+}
+
+function submitAppleCash() {
+  const number = document.getElementById('apple-cash-number').value.trim();
+  if (!number) return;
+
+  fetch('/bill/' + billId + '/apple-cash', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ person: currentPerson, phone_number: number })
+  })
+  .then(res => res.json().then(body => ({ ok: res.ok, body })))
+  .then(({ ok, body }) => {
+    if (!ok) { alert(body.error || 'Could not save your number.'); return; }
+    document.getElementById('apple-cash-number').value = '';
+    refreshData();
+    openPayPage();
+  });
 }
 
 function closePayPage() {
@@ -384,6 +492,25 @@ function closePayPage() {
 }
 
 setInterval(() => { if (currentPerson && !refreshPaused) refreshData(); }, 4000);
+
+function dismissInstallBanner() {
+  localStorage.setItem('install_banner_dismissed', 'true');
+  document.getElementById('install-banner').classList.add('hidden');
+}
+
+(function initInstallBanner() {
+  const isStandalone = window.navigator.standalone === true
+    || window.matchMedia('(display-mode: standalone)').matches;
+  const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+  const dismissed = localStorage.getItem('install_banner_dismissed') === 'true';
+
+  // Only worth showing on iOS Safari, where "Add to Home Screen" requires
+  // manual steps — Android Chrome surfaces its own install prompt
+  // automatically, and there's nothing to show once it's already installed.
+  if (isIOS && !isStandalone && !dismissed) {
+    document.getElementById('install-banner').classList.remove('hidden');
+  }
+})();
 </script>
 </body>
 </html>

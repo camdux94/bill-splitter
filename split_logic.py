@@ -83,6 +83,8 @@ def payment_links(handles, amount, note="Bill split"):
     )
 
     cashapp_handle = handles.get("cashapp")
+    if cashapp_handle:
+        cashapp_handle = cashapp_handle.lstrip("$").strip()
     links["cashapp"] = (
         {"handle": cashapp_handle, "amount": amount_str, "profile_url": f"https://cash.app/${cashapp_handle}"}
         if cashapp_handle else None
