@@ -94,13 +94,8 @@
       <div class="lbl" id="result-total-label">Total</div>
     </div>
     <div class="ledger-row"><span id="result-subtotal-label">Subtotal</span><span class="amt" id="result-subtotal">$0.00</span></div>
-    <div class="ledger-row"><span>Tax</span><span class="amt" id="result-tax">$0.00</span></div>
-    <hr class="divider-line" id="breakdown-divider" style="display:none;" />
-    <div id="rate-breakdown" style="display:none;">
-      <div class="section-label">Breakdown by rate</div>
-      <div class="ledger-row"><span>If state tax only (<span id="breakdown-state-pct">0%</span>)</span><span class="amt" id="breakdown-state-total">$0.00</span></div>
-      <div class="ledger-row"><span>With local added (<span id="breakdown-combined-pct">0%</span>)</span><span class="amt" id="breakdown-combined-total">$0.00</span></div>
-    </div>
+    <div class="ledger-row"><span>State tax</span><span class="amt" id="result-state-tax">$0.00</span></div>
+    <div class="ledger-row" id="local-tax-row"><span>Local tax</span><span class="amt" id="result-local-tax">$0.00</span></div>
   </div>
 </div>
 
@@ -221,28 +216,17 @@ function calculate() {
     tax = total - subtotal;
   }
 
+  const stateTax = subtotal * (stateRate / 100);
+  const localTax = subtotal * (localRate / 100);
+
   document.getElementById('result-total').textContent = '$' + total.toFixed(2);
   document.getElementById('result-total-label').textContent = mode === 'forward' ? 'Total' : 'Total (as entered)';
   document.getElementById('result-subtotal-label').textContent = 'Subtotal';
   document.getElementById('result-subtotal').textContent = '$' + subtotal.toFixed(2);
-  document.getElementById('result-tax').textContent = '$' + tax.toFixed(2);
+  document.getElementById('result-state-tax').textContent = '$' + stateTax.toFixed(2);
+  document.getElementById('result-local-tax').textContent = '$' + localTax.toFixed(2);
+  document.getElementById('local-tax-row').style.display = localRate > 0 ? 'flex' : 'none';
   document.getElementById('result-card').style.display = 'block';
-
-  // Only worth comparing if there's actually a local rate to compare against
-  const breakdownEl = document.getElementById('rate-breakdown');
-  const dividerEl = document.getElementById('breakdown-divider');
-  if (localRate > 0 && stateRate > 0) {
-    const stateOnlyTotal = subtotal * (1 + stateRate / 100);
-    document.getElementById('breakdown-state-pct').textContent = stateRate.toFixed(3) + '%';
-    document.getElementById('breakdown-state-total').textContent = '$' + stateOnlyTotal.toFixed(2);
-    document.getElementById('breakdown-combined-pct').textContent = rate.toFixed(3) + '%';
-    document.getElementById('breakdown-combined-total').textContent = '$' + total.toFixed(2);
-    breakdownEl.style.display = 'block';
-    dividerEl.style.display = 'block';
-  } else {
-    breakdownEl.style.display = 'none';
-    dividerEl.style.display = 'none';
-  }
 }
 </script>
 </body>
