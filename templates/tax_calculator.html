@@ -70,16 +70,6 @@
       <button class="btn-outline-dashed" style="margin-top: 8px;" onclick="useMyLocation()" id="location-btn">📍 Use my current location</button>
       <div id="zip-result"></div>
     </div>
-
-    <hr class="divider-line" />
-
-    <div class="field" style="margin-bottom:0;">
-      <label>Or just pick a state</label>
-      <select id="state-select" class="field-select" onchange="applyStateRate()">
-        <option value="">— Select a state —</option>
-      </select>
-      <p class="hint" style="margin-top: 6px; margin-bottom: 0;">Fills the state rate only — you'll likely want to add a local rate below too.</p>
-    </div>
   </div>
 
   <div class="card">
@@ -116,41 +106,6 @@
 
 <script>
 let mode = 'forward'; // 'forward' = subtotal -> total, 'reverse' = total -> subtotal
-
-// Approximate STATE BASE sales tax rates only — many cities/counties add
-// local tax on top of these, so this is a starting point, not a precise
-// lookup. Good enough to save typing; not good enough to trust blindly.
-const stateTaxRates = {
-  'Alabama': 4.0, 'Alaska': 0, 'Arizona': 5.6, 'Arkansas': 6.5, 'California': 7.25,
-  'Colorado': 2.9, 'Connecticut': 6.35, 'Delaware': 0, 'Florida': 6.0, 'Georgia': 4.0,
-  'Hawaii': 4.0, 'Idaho': 6.0, 'Illinois': 6.25, 'Indiana': 7.0, 'Iowa': 6.0,
-  'Kansas': 6.5, 'Kentucky': 6.0, 'Louisiana': 4.45, 'Maine': 5.5, 'Maryland': 6.0,
-  'Massachusetts': 6.25, 'Michigan': 6.0, 'Minnesota': 6.875, 'Mississippi': 7.0,
-  'Missouri': 4.225, 'Montana': 0, 'Nebraska': 5.5, 'Nevada': 6.85, 'New Hampshire': 0,
-  'New Jersey': 6.625, 'New Mexico': 4.875, 'New York': 4.0, 'North Carolina': 4.75,
-  'North Dakota': 5.0, 'Ohio': 5.75, 'Oklahoma': 4.5, 'Oregon': 0, 'Pennsylvania': 6.0,
-  'Rhode Island': 7.0, 'South Carolina': 6.0, 'South Dakota': 4.2, 'Tennessee': 7.0,
-  'Texas': 6.25, 'Utah': 6.1, 'Vermont': 6.0, 'Virginia': 5.3, 'Washington': 6.5,
-  'Washington D.C.': 6.0, 'West Virginia': 6.0, 'Wisconsin': 5.0, 'Wyoming': 4.0,
-};
-
-function populateStateDropdown() {
-  const select = document.getElementById('state-select');
-  Object.keys(stateTaxRates).sort().forEach(state => {
-    const opt = document.createElement('option');
-    opt.value = state;
-    opt.textContent = state;
-    select.appendChild(opt);
-  });
-}
-
-function applyStateRate() {
-  const state = document.getElementById('state-select').value;
-  if (!state) return;
-  document.getElementById('input-state-rate').value = stateTaxRates[state];
-  // Don't touch local rate — leave whatever the person already entered.
-  calculate();
-}
 
 function useMyLocation() {
   const resultEl = document.getElementById('zip-result');
@@ -231,8 +186,6 @@ function lookupZip() {
       resultEl.innerHTML = '<div class="hint" style="color: var(--brick);">Lookup failed — try the state dropdown instead.</div>';
     });
 }
-
-populateStateDropdown();
 
 function switchMode(newMode) {
   mode = newMode;
