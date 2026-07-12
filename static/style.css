@@ -315,6 +315,15 @@ body {
 .person-name { font-size: 14px; font-weight: 700; font-family: var(--font-display); }
 .person-amount { font-family: var(--font-mono); font-size: 17px; font-weight: 700; color: var(--ink); }
 .person-meta { font-size: 11px; color: var(--ink-faint); margin-top: 5px; font-family: var(--font-mono); }
+.person-items {
+  margin-top: 8px; padding: 8px 10px; background: var(--paper);
+  border-radius: var(--radius-sm); border: 1px solid var(--line);
+}
+.person-item-row {
+  display: flex; justify-content: space-between; font-size: 12px;
+  color: var(--ink-soft); padding: 3px 0;
+}
+.person-item-row .amt { font-family: var(--font-mono); color: var(--ink); }
 .pay-links { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; align-items: center; }
 .pay-link {
   font-size: 11px; font-weight: 600; padding: 7px 12px;
@@ -427,3 +436,19 @@ body {
   border-radius: var(--radius-sm); margin-bottom: 8px;
 }
 #pay-page .page-title { font-size: 40px; color: var(--pine); }
+
+#pay-page .pay-method {
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--line);
+}
+#pay-page .pay-method:last-of-type { border-bottom: none; }
+#pay-page .pay-method-label {
+  font-family: var(--font-mono); font-size: 10px; font-weight: 600;
+  letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-faint);
+  margin-bottom: 8px;
+}
+#pay-page .pay-method-detail {
+  font-family: var(--font-mono); font-size: 14px; color: var(--ink);
+  margin-bottom: 10px; padding: 10px 12px; background: var(--paper-alt);
+  border-radius: var(--radius-sm); border: 1px solid var(--line);
+}
