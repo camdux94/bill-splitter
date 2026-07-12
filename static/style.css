@@ -550,6 +550,7 @@ body {
   text-decoration: none; color: var(--ink);
 }
 .recent-bill-row-rich:last-child { border-bottom: none; }
+.recent-bill-row-rich.recent-bill-gone { opacity: 0.5; }
 .recent-bill-top { display: flex; justify-content: space-between; align-items: center; font-size: 14px; font-weight: 600; }
 .recent-bill-amount {
   font-family: var(--font-mono); font-size: 13px; color: var(--pine); font-weight: 700;

@@ -16,15 +16,25 @@
     display: inline-flex; align-items: center; gap: 4px; font-size: 12px;
     color: var(--ink-soft); text-decoration: none; margin-bottom: 1rem;
   }
-  .result-display {
-    text-align: center; padding: 1.5rem 0;
+  .result-display { text-align: center; padding: 1.5rem 0; }
+  .result-display .amt { font-family: var(--font-mono); font-size: 44px; font-weight: 700; color: var(--pine); }
+  .result-display .lbl { font-size: 11px; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 4px; }
+
+  .step-num {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 20px; height: 20px; border-radius: 50%; background: var(--pine);
+    color: var(--paper); font-family: var(--font-mono); font-size: 11px; font-weight: 700;
+    margin-right: 8px; flex-shrink: 0;
   }
-  .result-display .amt {
-    font-family: var(--font-mono); font-size: 44px; font-weight: 700; color: var(--pine);
+  .step-heading { display: flex; align-items: center; font-size: 13px; font-weight: 700; color: var(--ink); margin-bottom: 0.85rem; }
+  .rate-split-row { display: flex; gap: 10px; }
+  .rate-split-row .field { flex: 1; }
+  .combined-rate-display {
+    text-align: center; padding: 10px; margin-top: 0.5rem;
+    background: var(--pine-wash); border-radius: var(--radius-sm);
+    font-family: var(--font-mono); font-size: 13px; color: var(--pine-dark); font-weight: 600;
   }
-  .result-display .lbl {
-    font-size: 11px; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 4px;
-  }
+  .divider-line { border: none; border-top: 1px dashed var(--line-strong); margin: 1.25rem 0; }
 </style>
 </head>
 <body>
@@ -42,14 +52,50 @@
   </div>
 
   <div class="card">
-    <div class="field" id="field-primary">
+    <div class="step-heading"><span class="step-num">1</span>Amount</div>
+    <div class="field" id="field-primary" style="margin-bottom:0;">
       <label id="label-primary">Subtotal</label>
       <input type="number" class="mono" id="input-primary" step="0.01" placeholder="0.00" oninput="calculate()" />
     </div>
+  </div>
+
+  <div class="card">
+    <div class="step-heading"><span class="step-num">2</span>Find your rate</div>
     <div class="field">
-      <label>Tax rate (%)</label>
-      <input type="number" class="mono" id="input-rate" step="0.01" placeholder="e.g. 9.5" oninput="calculate()" />
+      <label>ZIP code (most accurate — includes city/county)</label>
+      <div style="display: flex; gap: 8px;">
+        <input type="text" class="mono" id="zip-input" placeholder="e.g. 90210" maxlength="5" inputmode="numeric" style="flex:1;" />
+        <button class="btn" style="width: auto; padding: 11px 18px;" onclick="lookupZip()">Look Up</button>
+      </div>
+      <button class="btn-outline-dashed" style="margin-top: 8px;" onclick="useMyLocation()" id="location-btn">📍 Use my current location</button>
+      <div id="zip-result"></div>
     </div>
+
+    <hr class="divider-line" />
+
+    <div class="field" style="margin-bottom:0;">
+      <label>Or just pick a state</label>
+      <select id="state-select" class="field-select" onchange="applyStateRate()">
+        <option value="">— Select a state —</option>
+      </select>
+      <p class="hint" style="margin-top: 6px; margin-bottom: 0;">Fills the state rate only — you'll likely want to add a local rate below too.</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="step-heading"><span class="step-num">3</span>Rate breakdown</div>
+    <div class="rate-split-row">
+      <div class="field">
+        <label>State rate (%)</label>
+        <input type="number" class="mono" id="input-state-rate" step="0.001" placeholder="0.00" oninput="calculate()" />
+      </div>
+      <div class="field">
+        <label>Local rate (%)</label>
+        <input type="number" class="mono" id="input-local-rate" step="0.001" placeholder="0.00" oninput="calculate()" />
+      </div>
+    </div>
+    <p class="hint" style="margin-top: 0;">County, city, and special district taxes usually land here — add them together if you know more than one.</p>
+    <div class="combined-rate-display" id="combined-rate-display">Combined rate: 0%</div>
   </div>
 
   <div class="card" id="result-card" style="display:none;">
@@ -59,11 +105,134 @@
     </div>
     <div class="ledger-row"><span id="result-subtotal-label">Subtotal</span><span class="amt" id="result-subtotal">$0.00</span></div>
     <div class="ledger-row"><span>Tax</span><span class="amt" id="result-tax">$0.00</span></div>
+    <hr class="divider-line" id="breakdown-divider" style="display:none;" />
+    <div id="rate-breakdown" style="display:none;">
+      <div class="section-label">Breakdown by rate</div>
+      <div class="ledger-row"><span>If state tax only (<span id="breakdown-state-pct">0%</span>)</span><span class="amt" id="breakdown-state-total">$0.00</span></div>
+      <div class="ledger-row"><span>With local added (<span id="breakdown-combined-pct">0%</span>)</span><span class="amt" id="breakdown-combined-total">$0.00</span></div>
+    </div>
   </div>
 </div>
 
 <script>
 let mode = 'forward'; // 'forward' = subtotal -> total, 'reverse' = total -> subtotal
+
+// Approximate STATE BASE sales tax rates only — many cities/counties add
+// local tax on top of these, so this is a starting point, not a precise
+// lookup. Good enough to save typing; not good enough to trust blindly.
+const stateTaxRates = {
+  'Alabama': 4.0, 'Alaska': 0, 'Arizona': 5.6, 'Arkansas': 6.5, 'California': 7.25,
+  'Colorado': 2.9, 'Connecticut': 6.35, 'Delaware': 0, 'Florida': 6.0, 'Georgia': 4.0,
+  'Hawaii': 4.0, 'Idaho': 6.0, 'Illinois': 6.25, 'Indiana': 7.0, 'Iowa': 6.0,
+  'Kansas': 6.5, 'Kentucky': 6.0, 'Louisiana': 4.45, 'Maine': 5.5, 'Maryland': 6.0,
+  'Massachusetts': 6.25, 'Michigan': 6.0, 'Minnesota': 6.875, 'Mississippi': 7.0,
+  'Missouri': 4.225, 'Montana': 0, 'Nebraska': 5.5, 'Nevada': 6.85, 'New Hampshire': 0,
+  'New Jersey': 6.625, 'New Mexico': 4.875, 'New York': 4.0, 'North Carolina': 4.75,
+  'North Dakota': 5.0, 'Ohio': 5.75, 'Oklahoma': 4.5, 'Oregon': 0, 'Pennsylvania': 6.0,
+  'Rhode Island': 7.0, 'South Carolina': 6.0, 'South Dakota': 4.2, 'Tennessee': 7.0,
+  'Texas': 6.25, 'Utah': 6.1, 'Vermont': 6.0, 'Virginia': 5.3, 'Washington': 6.5,
+  'Washington D.C.': 6.0, 'West Virginia': 6.0, 'Wisconsin': 5.0, 'Wyoming': 4.0,
+};
+
+function populateStateDropdown() {
+  const select = document.getElementById('state-select');
+  Object.keys(stateTaxRates).sort().forEach(state => {
+    const opt = document.createElement('option');
+    opt.value = state;
+    opt.textContent = state;
+    select.appendChild(opt);
+  });
+}
+
+function applyStateRate() {
+  const state = document.getElementById('state-select').value;
+  if (!state) return;
+  document.getElementById('input-state-rate').value = stateTaxRates[state];
+  // Don't touch local rate — leave whatever the person already entered.
+  calculate();
+}
+
+function useMyLocation() {
+  const resultEl = document.getElementById('zip-result');
+  const btn = document.getElementById('location-btn');
+
+  if (!navigator.geolocation) {
+    resultEl.innerHTML = '<div class="hint" style="color: var(--brick);">Location isn\'t available on this browser — enter your ZIP manually.</div>';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Finding you...';
+  resultEl.innerHTML = '<div class="hint"><span class="spinner" style="border-top-color: var(--pine); border-color: rgba(47,111,94,0.2);"></span>Getting your location...</div>';
+
+  navigator.geolocation.getCurrentPosition(
+    (position) => {
+      const { latitude, longitude } = position.coords;
+      fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&addressdetails=1`)
+        .then(res => res.json())
+        .then(data => {
+          btn.disabled = false;
+          btn.textContent = '📍 Use my current location';
+          const zip = data.address && data.address.postcode;
+          if (!zip) {
+            resultEl.innerHTML = '<div class="hint" style="color: var(--brick);">Couldn\'t determine a ZIP code for your location — enter it manually.</div>';
+            return;
+          }
+          document.getElementById('zip-input').value = zip.split('-')[0]; // strip ZIP+4 if present
+          lookupZip();
+        })
+        .catch(() => {
+          btn.disabled = false;
+          btn.textContent = '📍 Use my current location';
+          resultEl.innerHTML = '<div class="hint" style="color: var(--brick);">Couldn\'t look up your location — enter your ZIP manually.</div>';
+        });
+    },
+    (error) => {
+      btn.disabled = false;
+      btn.textContent = '📍 Use my current location';
+      const msg = error.code === error.PERMISSION_DENIED
+        ? 'Location permission denied — enter your ZIP manually.'
+        : 'Couldn\'t get your location — enter your ZIP manually.';
+      resultEl.innerHTML = `<div class="hint" style="color: var(--brick);">${msg}</div>`;
+    }
+  );
+}
+
+function lookupZip() {
+  const zip = document.getElementById('zip-input').value.trim();
+  const resultEl = document.getElementById('zip-result');
+
+  if (!/^\d{5}$/.test(zip)) {
+    resultEl.innerHTML = '<div class="hint" style="color: var(--brick);">Enter a 5-digit ZIP code.</div>';
+    return;
+  }
+
+  resultEl.innerHTML = '<div class="hint"><span class="spinner" style="border-top-color: var(--pine); border-color: rgba(47,111,94,0.2);"></span>Looking up...</div>';
+
+  fetch(`https://salestaxzip.com/api/v1/rate/${zip}`)
+    .then(res => res.json())
+    .then(data => {
+      if (!data.success) {
+        resultEl.innerHTML = '<div class="hint" style="color: var(--brick);">Couldn\'t find that ZIP code. Try the state dropdown instead.</div>';
+        return;
+      }
+      // Split the API's combined rate into state vs. everything-else
+      // (county + city + special district), so both fields populate —
+      // this keeps state/local additive and consistent no matter how
+      // the API itself buckets local jurisdictions.
+      const statePct = data.data.rates.state * 100;
+      const localPct = (data.data.rates.combined - data.data.rates.state) * 100;
+      document.getElementById('input-state-rate').value = statePct.toFixed(3);
+      document.getElementById('input-local-rate').value = localPct.toFixed(3);
+      resultEl.innerHTML = `<div class="hint">✓ ${data.data.city}, ${data.data.state} — combined rate ${data.data.rates.combined_pct}</div>`;
+      calculate();
+    })
+    .catch(() => {
+      resultEl.innerHTML = '<div class="hint" style="color: var(--brick);">Lookup failed — try the state dropdown instead.</div>';
+    });
+}
+
+populateStateDropdown();
 
 function switchMode(newMode) {
   mode = newMode;
@@ -76,9 +245,13 @@ function switchMode(newMode) {
 
 function calculate() {
   const primary = parseFloat(document.getElementById('input-primary').value);
-  const rate = parseFloat(document.getElementById('input-rate').value);
+  const stateRate = parseFloat(document.getElementById('input-state-rate').value) || 0;
+  const localRate = parseFloat(document.getElementById('input-local-rate').value) || 0;
+  const rate = stateRate + localRate;
 
-  if (isNaN(primary) || isNaN(rate) || primary <= 0) {
+  document.getElementById('combined-rate-display').textContent = `Combined rate: ${rate.toFixed(3)}%`;
+
+  if (isNaN(primary) || primary <= 0 || rate <= 0) {
     document.getElementById('result-card').style.display = 'none';
     return;
   }
@@ -101,6 +274,22 @@ function calculate() {
   document.getElementById('result-subtotal').textContent = '$' + subtotal.toFixed(2);
   document.getElementById('result-tax').textContent = '$' + tax.toFixed(2);
   document.getElementById('result-card').style.display = 'block';
+
+  // Only worth comparing if there's actually a local rate to compare against
+  const breakdownEl = document.getElementById('rate-breakdown');
+  const dividerEl = document.getElementById('breakdown-divider');
+  if (localRate > 0 && stateRate > 0) {
+    const stateOnlyTotal = subtotal * (1 + stateRate / 100);
+    document.getElementById('breakdown-state-pct').textContent = stateRate.toFixed(3) + '%';
+    document.getElementById('breakdown-state-total').textContent = '$' + stateOnlyTotal.toFixed(2);
+    document.getElementById('breakdown-combined-pct').textContent = rate.toFixed(3) + '%';
+    document.getElementById('breakdown-combined-total').textContent = '$' + total.toFixed(2);
+    breakdownEl.style.display = 'block';
+    dividerEl.style.display = 'block';
+  } else {
+    breakdownEl.style.display = 'none';
+    dividerEl.style.display = 'none';
+  }
 }
 </script>
 </body>

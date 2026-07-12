@@ -141,13 +141,30 @@ function renderRecentBills() {
     `;
   }).join('');
 
+  // Give each fetch a hard timeout so a slow/hanging request can't leave
+  // a row stuck on "Loading..." forever.
+  function fetchWithTimeout(url, ms) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), ms);
+    return fetch(url, { signal: controller.signal }).finally(() => clearTimeout(timer));
+  }
+
   recent.forEach(b => {
-    fetch('/bill/' + b.bill_id + '/data')
+    fetchWithTimeout('/bill/' + b.bill_id + '/data', 6000)
       .then(res => res.json())
       .then(data => {
-        if (data.error) return;
         const row = document.getElementById('recent-bill-' + b.bill_id);
         if (!row) return;
+        const loadingEl = row.querySelector('.recent-bill-loading');
+
+        if (data.error) {
+          // Bill no longer exists on the server — show it plainly instead
+          // of hanging, and stop tracking it so it won't show up again.
+          if (loadingEl) loadingEl.outerHTML = '<div class="hint">No longer available</div>';
+          row.classList.add('recent-bill-gone');
+          removeRecentBill(b.bill_id);
+          return;
+        }
 
         const people = Object.keys(data.people || {});
         const grandTotal = people.reduce((sum, p) => sum + data.people[p].total, 0);
@@ -157,20 +174,28 @@ function renderRecentBills() {
           return `<span class="person-chip ${paid ? 'paid' : ''}">${paid ? '✓ ' : ''}${p}</span>`;
         }).join('');
 
-        const loadingEl = row.querySelector('.recent-bill-loading');
-        loadingEl.outerHTML = `
-          <div class="recent-bill-amount">$${grandTotal.toFixed(2)} total</div>
-          <div class="recent-bill-people">${chips || '<span class="hint">No one has claimed anything yet</span>'}</div>
-        `;
+        if (loadingEl) {
+          loadingEl.outerHTML = `
+            <div class="recent-bill-amount">$${grandTotal.toFixed(2)} total</div>
+            <div class="recent-bill-people">${chips || '<span class="hint">No one has claimed anything yet</span>'}</div>
+          `;
+        }
       })
       .catch(() => {
         const row = document.getElementById('recent-bill-' + b.bill_id);
         if (row) {
           const loadingEl = row.querySelector('.recent-bill-loading');
-          if (loadingEl) loadingEl.textContent = '';
+          if (loadingEl) loadingEl.outerHTML = '<div class="hint">Couldn\'t load — tap to try opening it</div>';
         }
       });
   });
+}
+
+function removeRecentBill(billId) {
+  let recent = [];
+  try { recent = JSON.parse(localStorage.getItem(RECENT_BILLS_KEY)) || []; } catch (e) { recent = []; }
+  recent = recent.filter(b => b.bill_id !== billId);
+  localStorage.setItem(RECENT_BILLS_KEY, JSON.stringify(recent));
 }
 
 renderRecentBills();
