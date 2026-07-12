@@ -18,7 +18,7 @@
 </head>
 <body>
 <div class="container">
-  <div class="header">
+  <div class="header" id="page-header">
     <div class="eyebrow">Split</div>
     <div class="page-title" id="restaurant-title">This bill</div>
     <p class="page-sub">Enter your name, tap what you had, set your tip.</p>
@@ -68,13 +68,18 @@
   </div>
 
   <div id="error-wrap"></div>
-</div>
 
-<div class="pay-sheet hidden" id="pay-sheet">
-  <div class="pay-sheet-inner">
-    <div class="section-label">Pay your share</div>
-    <div id="pay-sheet-links"></div>
-    <button class="btn btn-ghost" style="margin-top: 10px;" onclick="closePaySheet()">Close</button>
+  <!-- PAY PAGE — replaces the main view entirely, not an overlay -->
+  <div id="pay-page" class="hidden">
+    <div class="header">
+      <div class="eyebrow">Pay your share</div>
+      <div class="page-title" id="pay-page-amount">$0.00</div>
+      <p class="page-sub" id="pay-page-restaurant"></p>
+    </div>
+    <div class="card">
+      <div id="pay-page-links"></div>
+    </div>
+    <button class="btn btn-ghost" onclick="closePayPage()">← Back</button>
   </div>
 </div>
 
@@ -82,7 +87,7 @@
   <div class="torn-edge"></div>
   <div class="bottom-bar">
     <div class="info">You owe<span class="amt" id="bar-total">$0.00</span></div>
-    <button class="btn" id="pay-btn" onclick="openPaySheet()">Pay</button>
+    <button class="btn" id="pay-btn" onclick="openPayPage()">Pay</button>
   </div>
 </div>
 
@@ -274,29 +279,54 @@ function openPayLink(event, url) {
   return false;
 }
 
-function openPaySheet() {
+function openPayPage() {
   const me = billData ? billData.people[currentPerson] : null;
-  const linksWrap = document.getElementById('pay-sheet-links');
+  const linksWrap = document.getElementById('pay-page-links');
+
+  document.getElementById('pay-page-restaurant').textContent = billData ? billData.restaurant_name : '';
 
   if (!me) {
+    document.getElementById('pay-page-amount').textContent = '$0.00';
     linksWrap.innerHTML = '<div class="hint">Claim at least one item first so we know what you owe.</div>';
   } else {
+    document.getElementById('pay-page-amount').textContent = '$' + me.total.toFixed(2);
     const links = me.payment_links;
     let html = '';
-    if (links.venmo) html += `<a class="pay-link venmo" href="${links.venmo}" onclick="return openPayLink(event, '${links.venmo}')">Pay $${me.total.toFixed(2)} with Venmo</a>`;
-    if (links.cashapp) html += `<a class="pay-link" href="${links.cashapp}" onclick="return openPayLink(event, '${links.cashapp}')">Pay $${me.total.toFixed(2)} with Cash App</a>`;
-    if (links.zelle) html += `<div class="zelle-info">Zelle ${links.zelle.handle} — $${me.total.toFixed(2)}</div>`;
-    if (!html) html = '<div class="hint">Whoever created this bill didn\'t add a payment method yet.</div>';
+
+    if (links.venmo) {
+      html += `<a class="pay-link venmo" href="${links.venmo}" onclick="return openPayLink(event, '${links.venmo}')">Pay with Venmo — opens prefilled</a>`;
+    }
+    if (links.cashapp) {
+      html += `
+        <div class="zelle-info">Cash App ${links.cashapp.handle} — send $${links.cashapp.amount}</div>
+        <a class="pay-link" href="${links.cashapp.profile_url}" onclick="return openPayLink(event, '${links.cashapp.profile_url}')">Open Cash App</a>
+      `;
+    }
+    if (links.zelle) {
+      html += `<div class="zelle-info">Zelle ${links.zelle.handle} — send $${links.zelle.amount}</div>`;
+    }
+    if (!links.venmo && !links.cashapp && !links.zelle) {
+      html = '<div class="hint">Whoever created this bill didn\'t add a payment method yet.</div>';
+    } else if (links.cashapp || links.zelle) {
+      html += '<div class="hint">Cash App and Zelle don\'t support prefilling the amount from outside their apps — enter it yourself once you\'re in.</div>';
+    }
     linksWrap.innerHTML = html;
   }
 
-  document.getElementById('pay-sheet').classList.remove('hidden');
+  document.getElementById('page-header').classList.add('hidden');
+  document.getElementById('main-content').classList.add('hidden');
+  document.getElementById('bottom-bar-wrap').classList.add('hidden');
+  document.getElementById('pay-page').classList.remove('hidden');
   refreshPaused = true;
 }
 
-function closePaySheet() {
-  document.getElementById('pay-sheet').classList.add('hidden');
+function closePayPage() {
+  document.getElementById('pay-page').classList.add('hidden');
+  document.getElementById('page-header').classList.remove('hidden');
+  document.getElementById('main-content').classList.remove('hidden');
+  document.getElementById('bottom-bar-wrap').classList.remove('hidden');
   refreshPaused = false;
+  refreshData();
 }
 
 setInterval(() => { if (currentPerson && !refreshPaused) refreshData(); }, 4000);

@@ -84,13 +84,18 @@ def payment_links(handles, amount, note="Bill split"):
 
     cashapp_handle = handles.get("cashapp")
     links["cashapp"] = (
-        f"https://cash.app/${cashapp_handle}/{amount_str}"
+        {"handle": cashapp_handle, "amount": amount_str, "profile_url": f"https://cash.app/${cashapp_handle}"}
         if cashapp_handle else None
     )
 
-    # Zelle has no reliable public deep-link scheme (bank-integrated, not a
-    # standalone wallet) — we just surface the info for the payer to copy
-    # into their own banking app.
+    # Neither Cash App nor Zelle can be reliably deep-linked with a
+    # pre-filled amount from a third-party site anymore. Cash App replaced
+    # its old cashtag/amount URL trick with an in-app "Payment Links"
+    # feature (launched Feb 2026) that must be generated from inside the
+    # app itself, not constructed externally — so the old URL format no
+    # longer prefills. Zelle has never had a public deep-link scheme since
+    # it's bank-integrated rather than a standalone wallet. Both now just
+    # surface the handle + amount for the payer to enter manually.
     zelle_handle = handles.get("zelle")
     links["zelle"] = (
         {"handle": zelle_handle, "amount": amount_str} if zelle_handle else None

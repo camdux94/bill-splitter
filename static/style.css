@@ -206,10 +206,11 @@ body {
 
 .item-row {
   display: grid;
-  grid-template-columns: 1fr 78px 46px 24px;
+  grid-template-columns: 1fr 68px 38px 32px;
   gap: 8px;
   margin-bottom: 7px;
   align-items: center;
+  padding-right: 6px;
 }
 .item-row input {
   padding: 8px 9px;
@@ -219,13 +220,19 @@ body {
   background: var(--paper);
   color: var(--ink);
   font-family: var(--font-body);
+  min-width: 0;
+  width: 100%;
 }
 .item-row .item-price { font-family: var(--font-mono); text-align: right; }
 .remove-btn {
   background: none; border: none; color: var(--ink-faint);
   cursor: pointer; font-size: 18px; line-height: 1;
+  width: 22px; height: 22px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  justify-self: center;
 }
-.remove-btn:hover { color: var(--brick); }
+.remove-btn:hover { color: var(--brick); background: var(--brick-wash); }
 
 .ledger-row {
   display: flex; justify-content: space-between; align-items: baseline;
@@ -400,3 +407,17 @@ body {
 .btn-copy.copied { background: var(--pine-wash); color: var(--pine-dark); border-color: var(--pine); }
 .btn-text { background: var(--pine); color: var(--paper); }
 .btn-text:hover { background: var(--pine-dark); }
+
+/* ---------- Pay page (full-page, not an overlay) ---------- */
+
+#pay-page .pay-link {
+  display: block; text-align: center; padding: 13px; font-size: 14px;
+  font-weight: 600; margin-bottom: 10px; border-radius: var(--radius-sm);
+}
+#pay-page .pay-link.venmo { background: var(--pine-wash); color: var(--pine-dark); }
+#pay-page .zelle-info {
+  text-align: center; font-family: var(--font-mono); font-size: 13px;
+  color: var(--ink-soft); padding: 12px; background: var(--paper-alt);
+  border-radius: var(--radius-sm); margin-bottom: 8px;
+}
+#pay-page .page-title { font-size: 40px; color: var(--pine); }
