@@ -287,8 +287,15 @@ function createBill() {
       return;
     }
     createdBillId = data.bill_id;
+    if (collector_pin) {
+      // Trust this device automatically going forward — the creator
+      // shouldn't have to re-type their own PIN every time they mark
+      // someone paid. Other devices still get prompted.
+      localStorage.setItem('pin_' + data.bill_id, collector_pin);
+    }
     const url = window.location.origin + '/bill/' + data.bill_id;
     document.getElementById('bill-link').textContent = url;
+    saveRecentBill(data.bill_id, restaurant_name, url);
     goToStep(4);
   })
   .catch(() => {
@@ -326,7 +333,7 @@ function copyLink() {
 function textLink() {
   const url = getBillUrl();
   const name = document.getElementById('restaurant-name').value.trim() || 'the bill';
-  const message = `Split ${name}: ${url}`;
+  const message = `Split ${name}: ${url} — tap it, then "Add to Home Screen" to save it like an app`;
   const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
   // iOS and Android use slightly different sms: URI separators for the
   // body param — no phone number is included, so the person picks or
@@ -339,6 +346,20 @@ function textLink() {
 
 function openBill() {
   window.location.href = getBillUrl();
+}
+
+const RECENT_BILLS_KEY = 'recent_bills';
+const RECENT_BILLS_MAX = 15;
+
+function saveRecentBill(billId, name, url) {
+  let recent = [];
+  try { recent = JSON.parse(localStorage.getItem(RECENT_BILLS_KEY)) || []; } catch (e) { recent = []; }
+
+  recent = recent.filter(b => b.bill_id !== billId);
+  recent.unshift({ bill_id: billId, name: name || 'Bill', url, timestamp: Date.now() });
+  recent = recent.slice(0, RECENT_BILLS_MAX);
+
+  localStorage.setItem(RECENT_BILLS_KEY, JSON.stringify(recent));
 }
 
 goToStep(1);

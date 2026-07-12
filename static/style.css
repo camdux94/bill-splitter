@@ -513,3 +513,34 @@ body {
 .method-badge.unselected {
   background: var(--paper-alt); color: var(--ink-faint); border-color: var(--line);
 }
+
+.method-confirmed-banner {
+  padding: 12px; background: var(--pine-wash); border: 1.5px solid var(--pine);
+  border-radius: var(--radius-sm); font-size: 13px; color: var(--pine-dark);
+  line-height: 1.5; margin-bottom: 1rem; font-weight: 500;
+}
+
+/* ---------- Celebration confetti ---------- */
+
+.confetti-overlay {
+  position: fixed; inset: 0; pointer-events: none; z-index: 100; overflow: hidden;
+}
+.confetti-piece {
+  position: absolute; top: -40px; animation-name: confetti-fall;
+  animation-timing-function: ease-in; animation-fill-mode: forwards;
+}
+@keyframes confetti-fall {
+  0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(110vh) rotate(360deg); opacity: 0.3; }
+}
+
+/* ---------- Recent bills (used on landing page) ---------- */
+
+.recent-bills-card { background: var(--paper-alt); }
+.recent-bill-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 0; border-bottom: 1px solid var(--line); text-decoration: none;
+  color: var(--ink); font-size: 13px;
+}
+.recent-bill-row:last-child { border-bottom: none; }
+.recent-bill-date { font-family: var(--font-mono); font-size: 11px; color: var(--ink-faint); }

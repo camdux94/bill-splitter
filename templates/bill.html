@@ -331,7 +331,7 @@ function renderTallySummary() {
     summaryEl.innerHTML = `
       <div class="summary-status all-paid">Everyone's paid ✓</div>
       <div class="hint">All ${people.length} people are settled up.</div>
-      <a class="btn" style="margin-top: 1rem; display: block; text-align: center; text-decoration: none;" href="/">Start a New Bill</a>
+      <a class="btn" style="margin-top: 1rem; display: block; text-align: center; text-decoration: none;" href="/split">Start a New Bill</a>
     `;
     if (!wasAllPaid) {
       celebrateAllPaid();

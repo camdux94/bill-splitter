@@ -79,8 +79,28 @@ init_db()
 
 
 @app.route("/")
+def landing():
+    return render_template("landing.html")
+
+
+@app.route("/split")
 def index():
     return render_template("create.html")
+
+
+@app.route("/tax-calculator")
+def tax_calculator():
+    return render_template("tax_calculator.html")
+
+
+@app.route("/tip-calculator")
+def tip_calculator():
+    return render_template("tip_calculator.html")
+
+
+@app.route("/scan")
+def receipt_scanner_page():
+    return render_template("receipt_scanner.html")
 
 
 @app.route("/bill/<bill_id>")

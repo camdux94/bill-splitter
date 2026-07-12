@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sales Tax Calculator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/style.css">
+<link rel="manifest" href="/static/manifest.json">
+<link rel="apple-touch-icon" href="/static/icon-180.png">
+<meta name="theme-color" content="#2F6F5E">
+<style>
+  .back-link {
+    display: inline-flex; align-items: center; gap: 4px; font-size: 12px;
+    color: var(--ink-soft); text-decoration: none; margin-bottom: 1rem;
+  }
+  .result-display {
+    text-align: center; padding: 1.5rem 0;
+  }
+  .result-display .amt {
+    font-family: var(--font-mono); font-size: 44px; font-weight: 700; color: var(--pine);
+  }
+  .result-display .lbl {
+    font-size: 11px; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 4px;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <a class="back-link" href="/">← Home</a>
+  <div class="header">
+    <div class="eyebrow">Sales Tax Calculator</div>
+    <div class="page-title">Add it or back it out</div>
+    <p class="page-sub">Figure out tax on a purchase, or work backward from a total that already includes it.</p>
+  </div>
+
+  <div class="tab-row">
+    <div class="tab-btn active" id="tab-forward" onclick="switchMode('forward')">Add Tax</div>
+    <div class="tab-btn" id="tab-reverse" onclick="switchMode('reverse')">Remove Tax</div>
+  </div>
+
+  <div class="card">
+    <div class="field" id="field-primary">
+      <label id="label-primary">Subtotal</label>
+      <input type="number" class="mono" id="input-primary" step="0.01" placeholder="0.00" oninput="calculate()" />
+    </div>
+    <div class="field">
+      <label>Tax rate (%)</label>
+      <input type="number" class="mono" id="input-rate" step="0.01" placeholder="e.g. 9.5" oninput="calculate()" />
+    </div>
+  </div>
+
+  <div class="card" id="result-card" style="display:none;">
+    <div class="result-display">
+      <div class="amt" id="result-total">$0.00</div>
+      <div class="lbl" id="result-total-label">Total</div>
+    </div>
+    <div class="ledger-row"><span id="result-subtotal-label">Subtotal</span><span class="amt" id="result-subtotal">$0.00</span></div>
+    <div class="ledger-row"><span>Tax</span><span class="amt" id="result-tax">$0.00</span></div>
+  </div>
+</div>
+
+<script>
+let mode = 'forward'; // 'forward' = subtotal -> total, 'reverse' = total -> subtotal
+
+function switchMode(newMode) {
+  mode = newMode;
+  document.getElementById('tab-forward').classList.toggle('active', mode === 'forward');
+  document.getElementById('tab-reverse').classList.toggle('active', mode === 'reverse');
+  document.getElementById('label-primary').textContent = mode === 'forward' ? 'Subtotal' : 'Total (tax included)';
+  document.getElementById('input-primary').value = '';
+  document.getElementById('result-card').style.display = 'none';
+}
+
+function calculate() {
+  const primary = parseFloat(document.getElementById('input-primary').value);
+  const rate = parseFloat(document.getElementById('input-rate').value);
+
+  if (isNaN(primary) || isNaN(rate) || primary <= 0) {
+    document.getElementById('result-card').style.display = 'none';
+    return;
+  }
+
+  let subtotal, tax, total;
+
+  if (mode === 'forward') {
+    subtotal = primary;
+    tax = subtotal * (rate / 100);
+    total = subtotal + tax;
+  } else {
+    total = primary;
+    subtotal = total / (1 + rate / 100);
+    tax = total - subtotal;
+  }
+
+  document.getElementById('result-total').textContent = '$' + total.toFixed(2);
+  document.getElementById('result-total-label').textContent = mode === 'forward' ? 'Total' : 'Total (as entered)';
+  document.getElementById('result-subtotal-label').textContent = 'Subtotal';
+  document.getElementById('result-subtotal').textContent = '$' + subtotal.toFixed(2);
+  document.getElementById('result-tax').textContent = '$' + tax.toFixed(2);
+  document.getElementById('result-card').style.display = 'block';
+}
+</script>
+</body>
+</html>

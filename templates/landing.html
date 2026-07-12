@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Split</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/style.css">
+<link rel="manifest" href="/static/manifest.json">
+<link rel="apple-touch-icon" href="/static/icon-180.png">
+<link rel="icon" type="image/png" href="/static/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Split">
+<meta name="theme-color" content="#2F6F5E">
+<style>
+  .tool-grid { display: flex; flex-direction: column; gap: 10px; margin-bottom: 1.5rem; }
+  .tool-button {
+    display: flex; align-items: center; gap: 14px; padding: 1.1rem;
+    background: var(--card); border: 1.5px solid var(--line); border-radius: var(--radius-lg);
+    text-decoration: none; color: var(--ink); transition: border-color 0.15s, transform 0.1s;
+  }
+  .tool-button:active { transform: scale(0.98); }
+  .tool-button:hover { border-color: var(--pine); }
+  .tool-icon-badge {
+    width: 46px; height: 46px; border-radius: 12px; background: var(--pine-wash);
+    display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0;
+  }
+  .tool-text { flex: 1; }
+  .tool-name { font-family: var(--font-display); font-size: 17px; font-weight: 600; }
+  .tool-desc { font-size: 12px; color: var(--ink-soft); margin-top: 2px; }
+  .tool-arrow { color: var(--ink-faint); font-size: 18px; }
+
+  .share-section {
+    background: var(--pine-wash); border: 1.5px solid var(--pine);
+    border-radius: var(--radius-lg); padding: 1.25rem; text-align: center; margin-top: 1.5rem;
+  }
+  .share-section .page-title-small {
+    font-family: var(--font-display); font-size: 16px; font-weight: 600; color: var(--pine-dark);
+    margin-bottom: 6px;
+  }
+  .share-section p { font-size: 12px; color: var(--pine-dark); line-height: 1.5; margin-bottom: 12px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <div class="eyebrow">Welcome to</div>
+    <div class="page-title">Split</div>
+    <p class="page-sub">Quick tools for splitting bills, figuring tips, and checking tax — right from your phone.</p>
+  </div>
+
+  <div class="card recent-bills-card hidden" id="recent-bills-card">
+    <div class="section-label">Recent bills on this device</div>
+    <div id="recent-bills-list"></div>
+    <p class="hint" style="margin-top: 0.5rem;">This list only lives on this phone — it's not synced anywhere.</p>
+  </div>
+
+  <div class="tool-grid">
+    <a class="tool-button" href="/split">
+      <div class="tool-icon-badge">🧾</div>
+      <div class="tool-text">
+        <div class="tool-name">Split a Bill</div>
+        <div class="tool-desc">Scan a receipt, share the link, everyone pays their share</div>
+      </div>
+      <div class="tool-arrow">→</div>
+    </a>
+    <a class="tool-button" href="/tax-calculator">
+      <div class="tool-icon-badge">%</div>
+      <div class="tool-text">
+        <div class="tool-name">Sales Tax Calculator</div>
+        <div class="tool-desc">Add tax to a subtotal, or back it out of a total</div>
+      </div>
+      <div class="tool-arrow">→</div>
+    </a>
+    <a class="tool-button" href="/tip-calculator">
+      <div class="tool-icon-badge">💵</div>
+      <div class="tool-text">
+        <div class="tool-name">Tip Calculator</div>
+        <div class="tool-desc">Quick tip math, solo or split between a group</div>
+      </div>
+      <div class="tool-arrow">→</div>
+    </a>
+    <a class="tool-button" href="/scan">
+      <div class="tool-icon-badge">📷</div>
+      <div class="tool-text">
+        <div class="tool-name">Scan a Receipt</div>
+        <div class="tool-desc">Just want the itemized total — no splitting needed</div>
+      </div>
+      <div class="tool-arrow">→</div>
+    </a>
+  </div>
+
+  <div class="share-section">
+    <div class="page-title-small">Share this with friends</div>
+    <p>Anyone can use Split — no App Store, no download. Send them this page, then have them tap Share → Add to Home Screen in Safari to save it like an app.</p>
+    <button class="btn" onclick="shareApp()">Share Split</button>
+  </div>
+</div>
+
+<script>
+function shareApp() {
+  const url = window.location.origin;
+  const message = `Check out Split: ${url} — tap it, then "Add to Home Screen" to save it like an app`;
+  if (navigator.share) {
+    navigator.share({ title: 'Split', text: message, url: url }).catch(() => {});
+  } else {
+    navigator.clipboard.writeText(message).then(() => {
+      alert('Link copied — paste it anywhere to share.');
+    }).catch(() => {
+      alert(message);
+    });
+  }
+}
+
+const RECENT_BILLS_KEY = 'recent_bills';
+
+function renderRecentBills() {
+  let recent = [];
+  try { recent = JSON.parse(localStorage.getItem(RECENT_BILLS_KEY)) || []; } catch (e) { recent = []; }
+  if (recent.length === 0) return;
+
+  document.getElementById('recent-bills-card').classList.remove('hidden');
+  document.getElementById('recent-bills-list').innerHTML = recent.map(b => {
+    const date = new Date(b.timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    return `<a class="recent-bill-row" href="${b.url}"><span>${b.name}</span><span class="recent-bill-date">${date}</span></a>`;
+  }).join('');
+}
+
+renderRecentBills();
+</script>
+</body>
+</html>
