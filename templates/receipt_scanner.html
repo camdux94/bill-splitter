@@ -51,8 +51,7 @@
     <div class="ledger-row grand"><span>Total</span><span class="amt" id="result-total">$0.00</span></div>
     <button class="btn btn-text hidden" id="share-native-btn" onclick="shareReceipt()" style="margin-top: 1rem;">Share →</button>
     <div class="share-row" id="share-row" style="display:none;">
-      <button class="btn btn-copy" id="copy-receipt-btn" onclick="copyReceiptText()">Copy Summary</button>
-      <button class="btn btn-ghost" onclick="textReceipt()">Text Instead</button>
+      <button class="btn btn-copy" id="save-photo-btn" onclick="savePhoto()">Save Photo</button>
     </div>
   </div>
 
@@ -60,9 +59,12 @@
 </div>
 
 <script>
+let lastImageFile = null;
+
 function scanReceipt(event) {
   const file = event.target.files[0];
   if (!file) return;
+  lastImageFile = file;
 
   document.getElementById('upload-text').textContent = 'Scanning...';
   document.getElementById('scan-status').innerHTML = '<div class="hint"><span class="spinner" style="border-top-color: var(--pine); border-color: rgba(47,111,94,0.2);"></span>Reading receipt...</div>';
@@ -116,28 +118,33 @@ function renderResult(data) {
 function shareReceipt() {
   const text = buildReceiptSummary();
   const title = (lastScannedData && lastScannedData.restaurant_name) || 'Receipt';
-  navigator.share({ title, text }).catch(() => {
+  const shareData = { title, text };
+
+  // Attach the actual receipt photo when the browser supports sharing
+  // files (Web Share API Level 2) — falls back to text-only otherwise.
+  if (lastImageFile && navigator.canShare && navigator.canShare({ files: [lastImageFile] })) {
+    shareData.files = [lastImageFile];
+  }
+
+  navigator.share(shareData).catch(() => {
     // User cancelled the share sheet, or the browser rejected it — no
-    // error needed, they can still use Copy/Text below.
+    // error needed, they can still use Save Photo below.
   });
 }
 
-function copyReceiptText() {
-  const text = buildReceiptSummary();
-  const btn = document.getElementById('copy-receipt-btn');
-  navigator.clipboard.writeText(text).then(() => {
-    btn.textContent = 'Copied ✓';
-    setTimeout(() => { btn.textContent = 'Copy Summary'; }, 2000);
-  }).catch(() => alert(text));
-}
-
-function textReceipt() {
-  const message = buildReceiptSummary();
-  const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
-  const smsUrl = isIOS
-    ? `sms:&body=${encodeURIComponent(message)}`
-    : `sms:?body=${encodeURIComponent(message)}`;
-  window.location.href = smsUrl;
+function savePhoto() {
+  if (!lastImageFile) return;
+  const btn = document.getElementById('save-photo-btn');
+  const url = URL.createObjectURL(lastImageFile);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = lastImageFile.name || 'receipt.jpg';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+  btn.textContent = 'Saved ✓';
+  setTimeout(() => { btn.textContent = 'Save Photo'; }, 2000);
 }
 
 function buildReceiptSummary() {
