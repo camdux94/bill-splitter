@@ -370,3 +370,33 @@ body {
 .bottom-bar .btn { width: auto; padding: 13px 26px; background: var(--amber); color: var(--ink); }
 .bottom-bar .btn:hover { background: var(--amber-dark); color: var(--paper); }
 .bottom-bar-wrap .torn-edge { background-image: radial-gradient(circle at 7px 7px, var(--paper) 6px, var(--ink) 6.5px); }
+
+/* ---------- Step wizard ---------- */
+
+.step-indicator { display: flex; align-items: center; gap: 6px; margin-bottom: 1.1rem; }
+.step-dot {
+  flex: 1; height: 4px; border-radius: 2px; background: var(--line);
+  transition: background 0.2s;
+}
+.step-dot.done { background: var(--pine); }
+.step-dot.current { background: var(--amber); }
+.step-label {
+  font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--ink-faint); margin-bottom: 1rem;
+}
+
+.bottom-bar .btn-ghost-bar {
+  background: transparent; color: rgba(251,247,238,0.75);
+  border: 1.5px solid rgba(251,247,238,0.3); width: auto; padding: 13px 18px;
+}
+.bottom-bar .btn-ghost-bar:hover { border-color: var(--paper); color: var(--paper); }
+
+/* ---------- Share step ---------- */
+
+.share-row { display: flex; gap: 10px; margin-top: 1rem; }
+.share-row .btn { flex: 1; }
+.btn-copy { background: var(--paper-alt); color: var(--ink); border: 1.5px solid var(--line-strong); }
+.btn-copy:hover { background: var(--line); }
+.btn-copy.copied { background: var(--pine-wash); color: var(--pine-dark); border-color: var(--pine); }
+.btn-text { background: var(--pine); color: var(--paper); }
+.btn-text:hover { background: var(--pine-dark); }

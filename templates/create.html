@@ -10,65 +10,161 @@
 <link rel="stylesheet" href="/static/style.css">
 <style>
   .receipt-icon { font-size: 26px; }
+  .skip-link {
+    display: block; text-align: center; font-size: 12px; color: var(--ink-faint);
+    margin-top: 0.75rem; cursor: pointer; text-decoration: underline;
+  }
+  .skip-link:hover { color: var(--pine); }
 </style>
 </head>
 <body>
 <div class="container">
   <div class="header">
     <div class="eyebrow">New split</div>
-    <div class="page-title">Scan, check, share.</div>
-    <p class="page-sub">Snap the receipt, we'll pull the items — fix anything we missed, then send the link.</p>
+    <div class="page-title" id="step-title">Scan the receipt</div>
+    <p class="page-sub" id="step-sub">Snap a photo and we'll pull out the items — you'll confirm everything next.</p>
   </div>
 
-  <div class="card">
-    <div class="upload-zone" onclick="document.getElementById('file-input').click()">
-      <div class="receipt-icon">🧾</div>
-      <p id="upload-text">Tap to scan a receipt photo</p>
+  <div class="step-indicator">
+    <div class="step-dot current" id="dot-1"></div>
+    <div class="step-dot" id="dot-2"></div>
+    <div class="step-dot" id="dot-3"></div>
+    <div class="step-dot" id="dot-4"></div>
+  </div>
+
+  <!-- STEP 1: SCAN -->
+  <div id="step-1">
+    <div class="card">
+      <div class="upload-zone" onclick="document.getElementById('file-input').click()">
+        <div class="receipt-icon">🧾</div>
+        <p id="upload-text">Tap to scan a receipt photo</p>
+      </div>
+      <input type="file" id="file-input" accept="image/*" style="display:none" onchange="scanReceipt(event)" />
+      <div id="scan-status"></div>
     </div>
-    <input type="file" id="file-input" accept="image/*" style="display:none" onchange="scanReceipt(event)" />
-    <div id="scan-status"></div>
+    <div class="skip-link" onclick="goToStep(2)">Skip — I'll add items by hand</div>
+  </div>
 
-    <div class="field" style="margin-top: 0.85rem;">
-      <label>Restaurant / bill name</label>
-      <input type="text" id="restaurant-name" placeholder="e.g. Dinner at Nobu" />
+  <!-- STEP 2: REVIEW ITEMS -->
+  <div id="step-2" class="hidden">
+    <div class="card">
+      <div class="field">
+        <label>Restaurant / bill name</label>
+        <input type="text" id="restaurant-name" placeholder="e.g. Dinner at Nobu" />
+      </div>
+
+      <div class="section-label" style="margin-top: 1rem;">Line items</div>
+      <div id="items-list"></div>
+      <div id="empty-hint" class="empty-hint">No items yet — add one below.</div>
+      <button class="btn-outline-dashed" onclick="addItemRow()">+ Item missing? Add it</button>
+
+      <div class="field" style="margin-top: 1.1rem;">
+        <label>Tax (total $ amount)</label>
+        <input type="number" class="mono" id="tax-input" step="0.01" placeholder="0.00" oninput="updateSubtotal()" />
+      </div>
+      <div class="ledger-row"><span>Subtotal</span><span class="amt" id="subtotal-display">$0.00</span></div>
+      <div class="ledger-row grand"><span>Total</span><span class="amt" id="total-display">$0.00</span></div>
+    </div>
+    <div id="items-error"></div>
+  </div>
+
+  <!-- STEP 3: PAYMENT INFO -->
+  <div id="step-3" class="hidden">
+    <div class="card">
+      <div class="section-label">Payment info — for whoever's collecting</div>
+      <div class="field"><label>Venmo username</label><input type="text" id="venmo-handle" placeholder="e.g. cam-hall" /></div>
+      <div class="field"><label>Cash App $cashtag</label><input type="text" id="cashapp-handle" placeholder="e.g. camhall" /></div>
+      <div class="field"><label>Zelle (email or phone)</label><input type="text" id="zelle-handle" placeholder="e.g. cam@email.com" /></div>
+      <div class="hint">Leave any blank to skip that option — everyone still sees the total either way.</div>
+    </div>
+    <div id="create-error"></div>
+  </div>
+
+  <!-- STEP 4: SHARE -->
+  <div id="step-4" class="hidden">
+    <div class="card success-card">
+      <div class="section-label" style="justify-content:center; display:flex;">Bill created</div>
+      <div class="link" id="bill-link"></div>
+      <div class="share-row">
+        <button class="btn btn-copy" id="copy-btn" onclick="copyLink()">Copy Link</button>
+        <button class="btn btn-text" onclick="textLink()">Text the Link</button>
+      </div>
+      <button class="btn btn-ghost" style="margin-top: 10px;" onclick="openBill()">Open Bill →</button>
     </div>
   </div>
-
-  <div class="card">
-    <div class="section-label">Line items</div>
-    <div id="items-list"></div>
-    <div id="empty-hint" class="empty-hint">Scan a receipt above, or add items by hand.</div>
-    <button class="btn-outline-dashed" onclick="addItemRow()">+ Item missing? Add it</button>
-
-    <div class="field" style="margin-top: 1.1rem;">
-      <label>Tax (total $ amount)</label>
-      <input type="number" class="mono" id="tax-input" step="0.01" placeholder="0.00" oninput="updateSubtotal()" />
-    </div>
-    <div class="ledger-row"><span>Subtotal</span><span class="amt" id="subtotal-display">$0.00</span></div>
-  </div>
-
-  <div class="card">
-    <div class="section-label">Payment info — for whoever's collecting</div>
-    <div class="field"><label>Venmo username</label><input type="text" id="venmo-handle" placeholder="e.g. cam-hall" /></div>
-    <div class="field"><label>Cash App $cashtag</label><input type="text" id="cashapp-handle" placeholder="e.g. camhall" /></div>
-    <div class="field"><label>Zelle (email or phone)</label><input type="text" id="zelle-handle" placeholder="e.g. cam@email.com" /></div>
-    <div class="hint">Leave any blank to skip that option — everyone still sees the total either way.</div>
-  </div>
-
-  <div id="create-error"></div>
-  <div id="success-wrap"></div>
 </div>
 
-<div class="bottom-bar-wrap">
+<div class="bottom-bar-wrap" id="bottom-bar-wrap">
   <div class="torn-edge"></div>
-  <div class="bottom-bar">
-    <div class="info">Subtotal<span class="amt" id="bar-subtotal">$0.00</span></div>
-    <button class="btn" id="create-btn" onclick="createBill()">Create & Get Link</button>
+  <div class="bottom-bar" id="bottom-bar">
+    <button class="btn btn-ghost-bar hidden" id="back-btn" onclick="goBack()">← Back</button>
+    <div class="info hidden" id="bar-info">Total<span class="amt" id="bar-total">$0.00</span></div>
+    <button class="btn" id="next-btn" onclick="handleNext()">Continue</button>
   </div>
 </div>
 
 <script>
 let itemCounter = 0;
+let currentStep = 1;
+let createdBillId = null;
+
+const stepMeta = {
+  1: { title: 'Scan the receipt', sub: "Snap a photo and we'll pull out the items — you'll confirm everything next." },
+  2: { title: 'Confirm the items', sub: 'Fix anything we misread, and add whatever the scan missed.' },
+  3: { title: 'Payment info', sub: "Optional, but it's what makes the payment buttons work on the other end." },
+  4: { title: 'Share the link', sub: 'Send it to the group — everyone taps in what they had.' },
+};
+
+function goToStep(step) {
+  document.getElementById('step-' + currentStep).classList.add('hidden');
+  currentStep = step;
+  document.getElementById('step-' + currentStep).classList.remove('hidden');
+
+  document.getElementById('step-title').textContent = stepMeta[step].title;
+  document.getElementById('step-sub').textContent = stepMeta[step].sub;
+
+  for (let i = 1; i <= 4; i++) {
+    const dot = document.getElementById('dot-' + i);
+    dot.classList.remove('done', 'current');
+    if (i < step) dot.classList.add('done');
+    else if (i === step) dot.classList.add('current');
+  }
+
+  const backBtn = document.getElementById('back-btn');
+  const nextBtn = document.getElementById('next-btn');
+  const barInfo = document.getElementById('bar-info');
+  const barWrap = document.getElementById('bottom-bar-wrap');
+
+  backBtn.classList.toggle('hidden', step === 1 || step === 4);
+  barInfo.classList.toggle('hidden', step !== 2);
+  barWrap.classList.toggle('hidden', step === 4);
+
+  if (step === 1) nextBtn.textContent = 'Continue';
+  if (step === 2) nextBtn.textContent = 'Continue';
+  if (step === 3) nextBtn.textContent = 'Create Bill';
+
+  if (step === 2) updateSubtotal();
+}
+
+function goBack() {
+  if (currentStep > 1) goToStep(currentStep - 1);
+}
+
+function handleNext() {
+  if (currentStep === 1) {
+    goToStep(2);
+  } else if (currentStep === 2) {
+    const items = collectItems();
+    document.getElementById('items-error').innerHTML = '';
+    if (items.length === 0) {
+      document.getElementById('items-error').innerHTML = '<div class="error-box">Add at least one item first.</div>';
+      return;
+    }
+    goToStep(3);
+  } else if (currentStep === 3) {
+    createBill();
+  }
+}
 
 function addItemRow(name = '', price = '', qty = 1) {
   itemCounter++;
@@ -94,14 +190,17 @@ function removeItemRow(id) {
 
 function updateSubtotal() {
   const rows = document.querySelectorAll('.item-row');
-  document.getElementById('empty-hint').style.display = rows.length === 0 ? 'block' : 'none';
+  const emptyHint = document.getElementById('empty-hint');
+  if (emptyHint) emptyHint.style.display = rows.length === 0 ? 'block' : 'none';
 
   const prices = document.querySelectorAll('.item-price');
   let sum = 0;
   prices.forEach(p => sum += parseFloat(p.value) || 0);
   const tax = parseFloat(document.getElementById('tax-input').value) || 0;
+
   document.getElementById('subtotal-display').textContent = '$' + sum.toFixed(2);
-  document.getElementById('bar-subtotal').textContent = '$' + (sum + tax).toFixed(2);
+  document.getElementById('total-display').textContent = '$' + (sum + tax).toFixed(2);
+  document.getElementById('bar-total').textContent = '$' + (sum + tax).toFixed(2);
 }
 
 function collectItems() {
@@ -134,16 +233,15 @@ function scanReceipt(event) {
         document.getElementById('scan-status').innerHTML = `<div class="error-box">${data.error}</div>`;
         return;
       }
-      document.getElementById('scan-status').innerHTML = '<div class="hint">Scanned — double check the items below, especially anything shared.</div>';
       document.getElementById('restaurant-name').value = data.restaurant_name || '';
       document.getElementById('items-list').innerHTML = '';
       (data.items || []).forEach(item => addItemRow(item.name, item.price, item.quantity || 1));
       document.getElementById('tax-input').value = data.tax || 0;
-      updateSubtotal();
+      goToStep(2);
     })
     .catch(() => {
       document.getElementById('upload-text').textContent = 'Tap to scan a receipt photo';
-      document.getElementById('scan-status').innerHTML = '<div class="error-box">Scan failed. Please try again or add items by hand below.</div>';
+      document.getElementById('scan-status').innerHTML = '<div class="error-box">Scan failed. Please try again, or skip to add items by hand.</div>';
     });
 }
 
@@ -157,12 +255,7 @@ function createBill() {
 
   document.getElementById('create-error').innerHTML = '';
 
-  if (items.length === 0) {
-    document.getElementById('create-error').innerHTML = '<div class="error-box">Add at least one item first.</div>';
-    return;
-  }
-
-  const btn = document.getElementById('create-btn');
+  const btn = document.getElementById('next-btn');
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner"></span>Creating...';
 
@@ -174,29 +267,67 @@ function createBill() {
   .then(res => res.json())
   .then(data => {
     btn.disabled = false;
-    btn.innerHTML = 'Create & Get Link';
+    btn.innerHTML = 'Create Bill';
     if (data.error) {
       document.getElementById('create-error').innerHTML = `<div class="error-box">${data.error}</div>`;
       return;
     }
+    createdBillId = data.bill_id;
     const url = window.location.origin + '/bill/' + data.bill_id;
-    document.getElementById('success-wrap').innerHTML = `
-      <div class="success-card">
-        <div class="section-label" style="justify-content:center; display:flex;">Bill created</div>
-        <div class="link">${url}</div>
-        <button class="btn" onclick="window.location.href='${url}'">Open Bill →</button>
-      </div>
-    `;
-    document.getElementById('success-wrap').scrollIntoView({ behavior: 'smooth' });
+    document.getElementById('bill-link').textContent = url;
+    goToStep(4);
   })
   .catch(() => {
     btn.disabled = false;
-    btn.innerHTML = 'Create & Get Link';
+    btn.innerHTML = 'Create Bill';
     document.getElementById('create-error').innerHTML = '<div class="error-box">Request failed. Please try again.</div>';
   });
 }
 
-updateSubtotal();
+function getBillUrl() {
+  return window.location.origin + '/bill/' + createdBillId;
+}
+
+function copyLink() {
+  const url = getBillUrl();
+  const btn = document.getElementById('copy-btn');
+  navigator.clipboard.writeText(url).then(() => {
+    btn.textContent = 'Copied ✓';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy Link'; btn.classList.remove('copied'); }, 2000);
+  }).catch(() => {
+    // Fallback for browsers without clipboard API support
+    const temp = document.createElement('textarea');
+    temp.value = url;
+    document.body.appendChild(temp);
+    temp.select();
+    document.execCommand('copy');
+    document.body.removeChild(temp);
+    btn.textContent = 'Copied ✓';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy Link'; btn.classList.remove('copied'); }, 2000);
+  });
+}
+
+function textLink() {
+  const url = getBillUrl();
+  const name = document.getElementById('restaurant-name').value.trim() || 'the bill';
+  const message = `Split ${name}: ${url}`;
+  const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+  // iOS and Android use slightly different sms: URI separators for the
+  // body param — no phone number is included, so the person picks or
+  // types the recipient themselves in Messages.
+  const smsUrl = isIOS
+    ? `sms:&body=${encodeURIComponent(message)}`
+    : `sms:?body=${encodeURIComponent(message)}`;
+  window.location.href = smsUrl;
+}
+
+function openBill() {
+  window.location.href = getBillUrl();
+}
+
+goToStep(1);
 </script>
 </body>
 </html>
