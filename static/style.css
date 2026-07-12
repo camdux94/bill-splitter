@@ -1,0 +1,372 @@
+/* ============================================================
+   Bill Splitter — design tokens
+   Direction: the product IS a receipt, so lean into the paper
+   artifact itself — torn edges, ledger rows, ink-stamp accents —
+   rather than a generic app-chrome look.
+   ============================================================ */
+
+:root {
+  --paper: #FBF7EE;
+  --paper-alt: #F3ECDD;
+  --card: #FFFFFF;
+  --ink: #211C16;
+  --ink-soft: #8A7F6E;
+  --ink-faint: #B8AD98;
+  --line: #E4D9C4;
+  --line-strong: #D2C4A6;
+
+  --pine: #2F6F5E;
+  --pine-dark: #1F4F42;
+  --pine-wash: #E8F0EC;
+
+  --amber: #D99A34;
+  --amber-dark: #A66F1C;
+  --amber-wash: #FBF0DC;
+
+  --brick: #B8503F;
+  --brick-wash: #F7E7E2;
+
+  --radius-lg: 18px;
+  --radius: 12px;
+  --radius-sm: 8px;
+
+  --shadow-card: 0 1px 2px rgba(33, 28, 22, 0.04), 0 8px 24px rgba(33, 28, 22, 0.06);
+  --shadow-lift: 0 4px 14px rgba(33, 28, 22, 0.10);
+
+  --font-display: 'Fraunces', Georgia, serif;
+  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', monospace;
+}
+
+* , *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { -webkit-tap-highlight-color: transparent; }
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
+  min-height: 100vh;
+  padding: 1.5rem 1rem 110px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+.container { max-width: 560px; margin: 0 auto; }
+
+/* ---------- Header ---------- */
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--pine);
+  margin-bottom: 4px;
+}
+
+.page-title {
+  font-family: var(--font-display);
+  font-size: 30px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  line-height: 1.15;
+}
+
+.page-sub {
+  font-size: 13px;
+  color: var(--ink-soft);
+  margin-top: 6px;
+}
+
+.header { margin-bottom: 1.5rem; }
+
+/* ---------- Cards ---------- */
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: 1.35rem;
+  margin-bottom: 1rem;
+  box-shadow: var(--shadow-card);
+  position: relative;
+}
+
+/* Perforated / torn-paper edge — the signature motif.
+   A row of punched "holes" rendered against the page background,
+   used at transitions like the top of the sticky bottom bar. */
+.torn-edge {
+  height: 14px;
+  background-image: radial-gradient(circle at 7px 7px, var(--paper) 6px, transparent 6.5px);
+  background-size: 14px 14px;
+  background-repeat: repeat-x;
+  background-position: center;
+}
+
+.section-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin-bottom: 0.85rem;
+}
+
+/* ---------- Form fields ---------- */
+
+.field { margin-bottom: 0.85rem; }
+
+.field label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  margin-bottom: 5px;
+}
+
+.field input {
+  width: 100%;
+  padding: 11px 13px;
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius-sm);
+  font-size: 15px;
+  font-family: var(--font-body);
+  color: var(--ink);
+  background: var(--paper);
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.field input:focus { border-color: var(--pine); }
+.field input::placeholder { color: var(--ink-faint); }
+
+.field input.mono { font-family: var(--font-mono); }
+
+/* ---------- Buttons ---------- */
+
+.btn {
+  padding: 13px 22px;
+  font-size: 14px;
+  font-weight: 700;
+  font-family: var(--font-body);
+  letter-spacing: 0.01em;
+  background: var(--pine);
+  color: var(--paper);
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  width: 100%;
+  transition: background 0.15s, transform 0.1s;
+}
+
+.btn:hover { background: var(--pine-dark); }
+.btn:active { transform: scale(0.98); }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.btn-ghost {
+  background: transparent;
+  color: var(--pine);
+  border: 1.5px solid var(--pine);
+}
+.btn-ghost:hover { background: var(--pine-wash); }
+
+.btn-outline-dashed {
+  background: transparent;
+  color: var(--ink-soft);
+  border: 1.5px dashed var(--line-strong);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 10px;
+  border-radius: var(--radius-sm);
+  width: 100%;
+  cursor: pointer;
+}
+.btn-outline-dashed:hover { border-color: var(--pine); color: var(--pine); }
+
+/* ---------- Upload zone ---------- */
+
+.upload-zone {
+  border: 1.5px dashed var(--line-strong);
+  border-radius: var(--radius);
+  padding: 1.6rem 1rem;
+  text-align: center;
+  cursor: pointer;
+  margin-bottom: 0.75rem;
+  transition: border-color 0.15s, background 0.15s;
+}
+.upload-zone:hover { border-color: var(--pine); background: var(--pine-wash); }
+.upload-zone .upload-icon { font-size: 22px; margin-bottom: 6px; }
+.upload-zone p { font-size: 13px; color: var(--ink-soft); font-weight: 500; }
+
+/* ---------- Ledger item rows (create page) ---------- */
+
+.item-row {
+  display: grid;
+  grid-template-columns: 1fr 78px 46px 24px;
+  gap: 8px;
+  margin-bottom: 7px;
+  align-items: center;
+}
+.item-row input {
+  padding: 8px 9px;
+  font-size: 13px;
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
+}
+.item-row .item-price { font-family: var(--font-mono); text-align: right; }
+.remove-btn {
+  background: none; border: none; color: var(--ink-faint);
+  cursor: pointer; font-size: 18px; line-height: 1;
+}
+.remove-btn:hover { color: var(--brick); }
+
+.ledger-row {
+  display: flex; justify-content: space-between; align-items: baseline;
+  font-size: 13px; color: var(--ink-soft); padding: 4px 0;
+}
+.ledger-row .amt { font-family: var(--font-mono); color: var(--ink); }
+.ledger-row.grand {
+  font-size: 18px; font-weight: 700; color: var(--pine);
+  padding-top: 10px; margin-top: 6px;
+  border-top: 1.5px dashed var(--line-strong);
+}
+.ledger-row.grand .amt { font-family: var(--font-mono); color: var(--pine); }
+
+.empty-hint {
+  font-size: 12px; color: var(--ink-faint); text-align: center;
+  padding: 1rem 0; font-style: italic;
+}
+
+/* ---------- Item claim checklist (bill page) ---------- */
+
+.item-check {
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 12px; border: 1.5px solid var(--line);
+  border-radius: var(--radius-sm); margin-bottom: 7px; cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.item-check.selected { border-color: var(--pine); background: var(--pine-wash); }
+.item-check input[type="checkbox"] {
+  width: 19px; height: 19px; accent-color: var(--pine); flex-shrink: 0;
+}
+.item-check .iname { flex: 1; font-size: 14px; font-weight: 500; }
+.item-check .iprice { font-family: var(--font-mono); font-size: 14px; font-weight: 600; color: var(--ink); }
+.item-check .isplit { font-size: 10px; color: var(--ink-faint); margin-top: 2px; font-family: var(--font-body); font-weight: 400; }
+
+/* ---------- Tip selector ---------- */
+
+.tip-row { display: flex; gap: 8px; align-items: center; margin-top: 0.6rem; flex-wrap: wrap; }
+.tip-stamp {
+  padding: 9px 14px; font-size: 13px; font-weight: 700;
+  font-family: var(--font-mono);
+  background: var(--paper); border: 1.5px solid var(--line-strong);
+  border-radius: 20px; color: var(--ink-soft); cursor: pointer;
+  transition: all 0.15s;
+}
+.tip-stamp.active {
+  background: var(--amber-wash); color: var(--amber-dark);
+  border-color: var(--amber); transform: rotate(-1deg);
+}
+.tip-input {
+  width: 96px; padding: 9px 10px; font-size: 13px;
+  font-family: var(--font-mono);
+  border: 1.5px solid var(--line); border-radius: var(--radius-sm);
+  background: var(--paper); color: var(--ink);
+}
+
+/* ---------- Tabs ---------- */
+
+.tab-row { display: flex; gap: 6px; margin-bottom: 1.1rem; background: var(--paper-alt); padding: 4px; border-radius: var(--radius); }
+.tab-btn {
+  flex: 1; padding: 10px; font-size: 12px; font-weight: 700;
+  letter-spacing: 0.02em; text-align: center;
+  background: transparent; border: none; border-radius: var(--radius-sm);
+  color: var(--ink-soft); cursor: pointer; transition: all 0.15s;
+}
+.tab-btn.active { background: var(--card); color: var(--pine); box-shadow: var(--shadow-lift); }
+
+/* ---------- Person / tally cards ---------- */
+
+.person-card {
+  border: 1.5px solid var(--line); border-radius: var(--radius);
+  padding: 14px; margin-bottom: 10px; position: relative; overflow: hidden;
+}
+.person-card.paid { border-color: var(--pine); background: var(--pine-wash); }
+.person-top { display: flex; justify-content: space-between; align-items: center; }
+.person-name { font-size: 14px; font-weight: 700; font-family: var(--font-display); }
+.person-amount { font-family: var(--font-mono); font-size: 17px; font-weight: 700; color: var(--ink); }
+.person-meta { font-size: 11px; color: var(--ink-faint); margin-top: 5px; font-family: var(--font-mono); }
+.pay-links { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; align-items: center; }
+.pay-link {
+  font-size: 11px; font-weight: 600; padding: 7px 12px;
+  border-radius: 20px; text-decoration: none;
+  border: 1.5px solid var(--line-strong); color: var(--ink-soft);
+}
+.pay-link.venmo { border-color: var(--pine); color: var(--pine); }
+.paid-toggle {
+  font-size: 10px; font-weight: 700; padding: 6px 11px;
+  border-radius: 20px; border: 1.5px solid var(--line-strong);
+  background: none; color: var(--ink-faint); cursor: pointer;
+}
+.paid-toggle.is-paid { background: var(--pine); color: var(--paper); border-color: var(--pine); }
+
+/* Ink-stamp "PAID" mark — the other signature detail */
+.stamp-paid {
+  position: absolute; top: 10px; right: -6px;
+  font-family: var(--font-mono); font-size: 11px; font-weight: 700;
+  letter-spacing: 0.12em; color: var(--brick);
+  border: 2px solid var(--brick); border-radius: 4px;
+  padding: 2px 8px; transform: rotate(8deg);
+  opacity: 0.55; text-transform: uppercase;
+  pointer-events: none;
+}
+
+/* ---------- Misc ---------- */
+
+.hint { font-size: 12px; color: var(--ink-soft); margin-top: 8px; line-height: 1.5; }
+.hidden { display: none !important; }
+
+.error-box {
+  color: var(--brick); font-size: 12px; padding: 11px 13px;
+  background: var(--brick-wash); border-radius: var(--radius-sm); margin-top: 8px;
+}
+
+.success-card {
+  background: var(--pine-wash); border: 1.5px solid var(--pine);
+  border-radius: var(--radius-lg); padding: 1.5rem; text-align: center;
+}
+.success-card .link {
+  font-family: var(--font-mono); font-size: 12px; color: var(--pine-dark);
+  word-break: break-all; margin: 12px 0; padding: 10px;
+  background: var(--card); border-radius: var(--radius-sm);
+}
+
+.spinner {
+  display: inline-block; width: 13px; height: 13px;
+  border: 2px solid rgba(255,255,255,0.3); border-top-color: var(--paper);
+  border-radius: 50%; animation: spin 0.6s linear infinite; margin-right: 7px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ---------- Sticky bottom bar (ticket-stub styled) ---------- */
+
+.bottom-bar-wrap {
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 50;
+}
+.bottom-bar {
+  background: var(--ink);
+  padding: 14px 1.25rem calc(14px + env(safe-area-inset-bottom));
+  display: flex; align-items: center; gap: 12px;
+}
+.bottom-bar .info { flex: 1; font-size: 12px; color: rgba(251,247,238,0.65); }
+.bottom-bar .info .amt { font-family: var(--font-mono); color: var(--paper); font-weight: 700; font-size: 17px; display: block; }
+.bottom-bar .btn { width: auto; padding: 13px 26px; background: var(--amber); color: var(--ink); }
+.bottom-bar .btn:hover { background: var(--amber-dark); color: var(--paper); }
+.bottom-bar-wrap .torn-edge { background-image: radial-gradient(circle at 7px 7px, var(--paper) 6px, var(--ink) 6.5px); }

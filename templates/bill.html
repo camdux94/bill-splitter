@@ -4,103 +4,70 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Split This Bill</title>
-<style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  :root {
-    --bg: #080808; --surface: #0d130d; --border: rgba(0,255,65,0.25);
-    --green: #00FF41; --green-dim: #00b82f; --text: #d8ffe0; --text-muted: #6fae7a; --text-hint: #4a7a52;
-    --amber: #FFC64B; --red: #FF4B4B; --radius: 8px; --radius-sm: 5px;
-  }
-  body { font-family: 'Courier New', ui-monospace, monospace; background: var(--bg); color: var(--text); min-height: 100vh; padding: 2rem 1rem; }
-  .container { max-width: 640px; margin: 0 auto; }
-  .header { margin-bottom: 1.5rem; }
-  .header h1 { font-size: 22px; font-weight: 700; color: var(--green); text-shadow: 0 0 8px rgba(0,255,65,0.4); }
-  .header p { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
-  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; margin-bottom: 1.25rem; }
-  .section-label { font-size: 11px; font-weight: 700; color: var(--green-dim); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 1rem; }
-  .field input {
-    width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm);
-    font-size: 14px; color: var(--text); background: #0a0f0a; outline: none; font-family: inherit; margin-bottom: 0.75rem;
-  }
-  .btn {
-    padding: 12px 20px; font-size: 13px; font-weight: 700; letter-spacing: 0.05em;
-    background: var(--green); color: #061006; border: none; border-radius: var(--radius-sm);
-    cursor: pointer; text-transform: uppercase; width: 100%;
-  }
-  .btn:hover { background: #33ff66; }
-  .btn-small { width: auto; padding: 8px 14px; font-size: 11px; }
-  .item-check {
-    display: flex; align-items: center; gap: 10px; padding: 10px; border: 1px solid var(--border);
-    border-radius: var(--radius-sm); margin-bottom: 6px; cursor: pointer;
-  }
-  .item-check.selected { border-color: var(--green-dim); background: rgba(0,255,65,0.06); }
-  .item-check input { width: 18px; height: 18px; accent-color: var(--green); }
-  .item-check .iname { flex: 1; font-size: 13px; }
-  .item-check .iprice { font-size: 13px; color: var(--green); font-weight: 700; }
-  .item-check .isplit { font-size: 10px; color: var(--text-hint); }
-  .tip-row { display: flex; gap: 8px; align-items: center; margin-top: 0.5rem; }
-  .tip-btn { padding: 8px 12px; font-size: 12px; background: #0a0f0a; border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-muted); cursor: pointer; }
-  .tip-btn.active { background: rgba(0,255,65,0.1); color: var(--green); border-color: var(--green-dim); }
-  .tip-input { width: 90px; padding: 8px; font-size: 13px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: #0a0f0a; color: var(--text); font-family: inherit; }
-  .total-row { display: flex; justify-content: space-between; font-size: 13px; color: var(--text-muted); padding: 4px 0; }
-  .total-row.grand { font-size: 18px; color: var(--green); font-weight: 700; padding-top: 8px; border-top: 1px solid var(--border); margin-top: 8px; }
-  .person-card { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px; margin-bottom: 8px; }
-  .person-card.paid { border-color: rgba(0,255,65,0.4); background: rgba(0,255,65,0.04); }
-  .person-top { display: flex; justify-content: space-between; align-items: center; }
-  .person-name { font-size: 13px; font-weight: 700; }
-  .person-amount { font-size: 16px; font-weight: 700; color: var(--green); }
-  .person-meta { font-size: 11px; color: var(--text-hint); margin-top: 4px; }
-  .pay-links { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
-  .pay-link { font-size: 11px; padding: 6px 10px; border-radius: var(--radius-sm); text-decoration: none; border: 1px solid var(--border); color: var(--text); }
-  .pay-link.venmo { border-color: rgba(0,255,65,0.4); color: var(--green); }
-  .paid-toggle { font-size: 10px; padding: 4px 8px; border-radius: 12px; border: 1px solid var(--border); background: none; color: var(--text-muted); cursor: pointer; }
-  .paid-toggle.is-paid { background: rgba(0,255,65,0.15); color: var(--green); border-color: var(--green-dim); }
-  .hint { font-size: 11px; color: var(--text-hint); margin-top: 8px; line-height: 1.5; }
-  .hidden { display: none !important; }
-  .spinner { display: inline-block; width: 12px; height: 12px; border: 2px solid rgba(0,255,65,0.2); border-top-color: var(--green); border-radius: 50%; animation: spin 0.6s linear infinite; margin-right: 6px; }
-  @keyframes spin { to { transform: rotate(360deg); } }
-</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
 <div class="container">
   <div class="header">
-    <h1 id="restaurant-title">&gt; SPLIT THIS BILL</h1>
-    <p>Enter your name, tap what you had, set your tip.</p>
+    <div class="eyebrow">Split</div>
+    <div class="page-title" id="restaurant-title">This bill</div>
+    <p class="page-sub">Enter your name, tap what you had, set your tip.</p>
   </div>
 
   <div class="card" id="name-card">
     <div class="section-label">Your name</div>
-    <input type="text" id="person-name-input" placeholder="e.g. Cameron" class="field" />
+    <input type="text" id="person-name-input" class="field" placeholder="e.g. Cameron" />
     <button class="btn" onclick="loadMySelections()">Continue</button>
   </div>
 
-  <div class="card hidden" id="claim-card">
-    <div class="section-label">What did you have?</div>
-    <div id="items-list"></div>
-
-    <div class="section-label" style="margin-top: 1.5rem;">Your tip</div>
-    <div class="tip-row">
-      <div class="tip-btn" onclick="setTipPercent(15)">15%</div>
-      <div class="tip-btn" onclick="setTipPercent(18)">18%</div>
-      <div class="tip-btn" onclick="setTipPercent(20)">20%</div>
-      <input type="number" class="tip-input" id="tip-amount-input" placeholder="$ amount" step="0.01" oninput="setTipCustom()" />
+  <div id="main-content" class="hidden">
+    <div class="tab-row">
+      <div class="tab-btn active" id="tab-order" onclick="switchTab('order')">My Order</div>
+      <div class="tab-btn" id="tab-tally" onclick="switchTab('tally')">Group Tally</div>
     </div>
-    <div class="hint" id="tip-percent-display"></div>
 
-    <div style="margin-top: 1.25rem;">
-      <div class="total-row"><span>Your subtotal</span><span id="my-subtotal">$0.00</span></div>
-      <div class="total-row"><span>Your tax share</span><span id="my-tax">$0.00</span></div>
-      <div class="total-row"><span>Your tip</span><span id="my-tip">$0.00</span></div>
-      <div class="total-row grand"><span>You owe</span><span id="my-total">$0.00</span></div>
+    <div id="panel-order">
+      <div class="card">
+        <div class="section-label">What did you have?</div>
+        <div id="items-list"></div>
+
+        <div class="section-label" style="margin-top: 1.35rem;">Your tip</div>
+        <div class="tip-row">
+          <div class="tip-stamp" onclick="setTipPercent(15)">15%</div>
+          <div class="tip-stamp" onclick="setTipPercent(18)">18%</div>
+          <div class="tip-stamp" onclick="setTipPercent(20)">20%</div>
+          <input type="number" class="tip-input" id="tip-amount-input" placeholder="$ custom" step="0.01" oninput="setTipCustom()" />
+        </div>
+        <div class="hint" id="tip-percent-display"></div>
+
+        <div style="margin-top: 1.1rem;">
+          <div class="ledger-row"><span>Your subtotal</span><span class="amt" id="my-subtotal">$0.00</span></div>
+          <div class="ledger-row"><span>Your tax share</span><span class="amt" id="my-tax">$0.00</span></div>
+          <div class="ledger-row"><span>Your tip</span><span class="amt" id="my-tip">$0.00</span></div>
+          <div class="ledger-row grand"><span>You owe</span><span class="amt" id="my-total">$0.00</span></div>
+        </div>
+      </div>
     </div>
-  </div>
 
-  <div class="card hidden" id="tally-card">
-    <div class="section-label">Everyone's tally</div>
-    <div id="people-list"></div>
+    <div id="panel-tally" class="hidden">
+      <div class="card">
+        <div class="section-label">Everyone's tally</div>
+        <div id="people-list"></div>
+      </div>
+    </div>
   </div>
 
   <div id="error-wrap"></div>
+</div>
+
+<div class="bottom-bar-wrap hidden" id="bottom-bar-wrap">
+  <div class="torn-edge"></div>
+  <div class="bottom-bar">
+    <div class="info">You owe<span class="amt" id="bar-total">$0.00</span></div>
+  </div>
 </div>
 
 <script>
@@ -108,14 +75,21 @@ const billId = window.location.pathname.split('/').pop();
 let currentPerson = '';
 let billData = null;
 let selectedItems = new Set();
-let tipMode = null; // 'percent' or 'custom'
+let tipMode = null;
+
+function switchTab(tab) {
+  document.getElementById('tab-order').classList.toggle('active', tab === 'order');
+  document.getElementById('tab-tally').classList.toggle('active', tab === 'tally');
+  document.getElementById('panel-order').classList.toggle('hidden', tab !== 'order');
+  document.getElementById('panel-tally').classList.toggle('hidden', tab !== 'tally');
+}
 
 function loadMySelections() {
   const name = document.getElementById('person-name-input').value.trim();
   if (!name) return;
   currentPerson = name;
-  document.getElementById('claim-card').classList.remove('hidden');
-  document.getElementById('tally-card').classList.remove('hidden');
+  document.getElementById('main-content').classList.remove('hidden');
+  document.getElementById('bottom-bar-wrap').classList.remove('hidden');
   refreshData();
 }
 
@@ -128,9 +102,8 @@ function refreshData() {
         return;
       }
       billData = data;
-      document.getElementById('restaurant-title').textContent = '> ' + data.restaurant_name.toUpperCase();
+      document.getElementById('restaurant-title').textContent = data.restaurant_name;
 
-      // Sync selectedItems with server state for current person
       const myClaims = data.claims.filter(c => c.person === currentPerson).map(c => c.item_id);
       selectedItems = new Set(myClaims);
 
@@ -182,7 +155,7 @@ function computeMySubtotal() {
 
 function setTipPercent(pct) {
   tipMode = 'percent';
-  document.querySelectorAll('.tip-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tip-stamp').forEach(b => b.classList.remove('active'));
   event.target.classList.add('active');
   const subtotal = computeMySubtotal();
   const tip = subtotal * (pct / 100);
@@ -191,7 +164,7 @@ function setTipPercent(pct) {
 }
 
 function setTipCustom() {
-  document.querySelectorAll('.tip-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tip-stamp').forEach(b => b.classList.remove('active'));
   const tip = parseFloat(document.getElementById('tip-amount-input').value) || 0;
   submitTip(tip);
 }
@@ -211,6 +184,7 @@ function updateMyTotals() {
     document.getElementById('my-tax').textContent = '$0.00';
     document.getElementById('my-tip').textContent = '$0.00';
     document.getElementById('my-total').textContent = '$0.00';
+    document.getElementById('bar-total').textContent = '$0.00';
     document.getElementById('tip-percent-display').textContent = '';
     return;
   }
@@ -218,6 +192,7 @@ function updateMyTotals() {
   document.getElementById('my-tax').textContent = '$' + me.tax_share.toFixed(2);
   document.getElementById('my-tip').textContent = '$' + me.tip.toFixed(2);
   document.getElementById('my-total').textContent = '$' + me.total.toFixed(2);
+  document.getElementById('bar-total').textContent = '$' + me.total.toFixed(2);
   document.getElementById('tip-percent-display').textContent = me.subtotal > 0
     ? `That's ${me.tip_percent}% of your subtotal`
     : '';
@@ -238,8 +213,11 @@ function renderTally() {
     if (links.cashapp) payLinksHtml += `<a class="pay-link" href="${links.cashapp}" onclick="return openPayLink(event, '${links.cashapp}')">Cash App</a>`;
     if (links.zelle) payLinksHtml += `<span class="pay-link">Zelle: ${links.zelle.handle}</span>`;
 
+    const stamp = p.paid ? '<div class="stamp-paid">Paid</div>' : '';
+
     return `
       <div class="person-card ${p.paid ? 'paid' : ''}">
+        ${stamp}
         <div class="person-top">
           <div class="person-name">${person}</div>
           <div class="person-amount">$${p.total.toFixed(2)}</div>
@@ -266,8 +244,6 @@ let refreshPaused = false;
 
 function openPayLink(event, url) {
   event.preventDefault();
-  // Briefly pause the auto-refresh so the tally list can't re-render and
-  // swap this element out from under a tap that's still in flight.
   refreshPaused = true;
   window.open(url, '_blank');
   setTimeout(() => { refreshPaused = false; }, 1500);
