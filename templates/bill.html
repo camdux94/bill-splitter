@@ -139,28 +139,77 @@ function renderItems() {
   const list = document.getElementById('items-list');
   list.innerHTML = billData.items.map(item => {
     const claimersForItem = billData.claims.filter(c => c.item_id === item.item_id).map(c => c.person);
-    const isSelected = selectedItems.has(item.item_id);
-    const splitCount = new Set(claimersForItem.concat(isSelected ? [currentPerson] : [])).size;
-    const splitNote = splitCount > 1 ? `split ${splitCount} ways` : '';
+    const amIClaiming = claimersForItem.includes(currentPerson);
+    const othersClaiming = claimersForItem.filter(p => p !== currentPerson);
+
+    // Case 1: I'm already in on this item (either solo or shared)
+    if (amIClaiming) {
+      const subtext = othersClaiming.length > 0 ? `split with ${othersClaiming.join(', ')}` : '';
+      return `
+        <div class="item-check selected" onclick="toggleItem('${item.item_id}')">
+          <input type="checkbox" checked onclick="event.stopPropagation(); toggleItem('${item.item_id}')" />
+          <div class="iname">${item.name}<div class="isplit">${subtext}</div></div>
+          <div class="iprice">$${item.price.toFixed(2)}</div>
+        </div>
+      `;
+    }
+
+    // Case 2: unclaimed — normal tap to claim
+    if (othersClaiming.length === 0) {
+      return `
+        <div class="item-check" onclick="toggleItem('${item.item_id}')">
+          <input type="checkbox" onclick="event.stopPropagation(); toggleItem('${item.item_id}')" />
+          <div class="iname">${item.name}</div>
+          <div class="iprice">$${item.price.toFixed(2)}</div>
+        </div>
+      `;
+    }
+
+    // Case 3: taken by someone else — offer to split instead of a flat lock
+    const namesList = othersClaiming.join(', ');
+    const safeNamesList = namesList.replace(/'/g, "\\'");
     return `
-      <div class="item-check ${isSelected ? 'selected' : ''}" onclick="toggleItem('${item.item_id}')">
-        <input type="checkbox" ${isSelected ? 'checked' : ''} onclick="event.stopPropagation(); toggleItem('${item.item_id}')" />
-        <div class="iname">${item.name}<div class="isplit">${splitNote}</div></div>
+      <div class="item-check taken">
+        <input type="checkbox" disabled />
+        <div class="iname">${item.name}<div class="isplit">claimed by ${namesList} · <span class="split-link" onclick="event.stopPropagation(); joinSplit('${item.item_id}', '${safeNamesList}')">split with me?</span></div></div>
         <div class="iprice">$${item.price.toFixed(2)}</div>
       </div>
     `;
   }).join('');
 }
 
+function joinSplit(itemId, namesList) {
+  const item = billData.items.find(i => i.item_id === itemId);
+  const confirmed = window.confirm(`Split "${item.name}" with ${namesList}? You'll each pay an equal share of $${item.price.toFixed(2)}.`);
+  if (!confirmed) return;
+
+  fetch('/bill/' + billId + '/join-split', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ person: currentPerson, item_id: itemId })
+  }).then(() => refreshData());
+}
+
 function toggleItem(itemId) {
-  if (selectedItems.has(itemId)) selectedItems.delete(itemId);
+  const wasSelected = selectedItems.has(itemId);
+  if (wasSelected) selectedItems.delete(itemId);
   else selectedItems.add(itemId);
 
   fetch('/bill/' + billId + '/claim', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ person: currentPerson, item_ids: Array.from(selectedItems) })
-  }).then(() => refreshData());
+  })
+  .then(res => res.json().then(body => ({ ok: res.ok, body })))
+  .then(({ ok, body }) => {
+    if (!ok) {
+      // Someone else grabbed it first — undo our optimistic local change
+      // and refresh to show the current real state.
+      if (wasSelected) selectedItems.add(itemId); else selectedItems.delete(itemId);
+      alert(body.error || 'Could not update your selection.');
+    }
+    refreshData();
+  });
 }
 
 function computeMySubtotal() {
@@ -250,8 +299,13 @@ function renderTally() {
 function togglePaid(person, paid) {
   let pin = '';
   if (billData && billData.requires_pin) {
-    pin = window.prompt("Enter the collector's PIN to update payment status:");
-    if (pin === null) return; // cancelled
+    const storedPin = localStorage.getItem('pin_' + billId);
+    if (storedPin) {
+      pin = storedPin;
+    } else {
+      pin = window.prompt("Enter the collector's PIN to update payment status:");
+      if (pin === null) return; // cancelled
+    }
   }
 
   fetch('/bill/' + billId + '/paid', {
@@ -298,8 +352,8 @@ function openPayPage() {
     }
     if (links.cashapp) {
       html += `
-        <div class="zelle-info">Cash App ${links.cashapp.handle} — send $${links.cashapp.amount}</div>
-        <a class="pay-link" href="${links.cashapp.profile_url}" onclick="return openPayLink(event, '${links.cashapp.profile_url}')">Open Cash App</a>
+        <div class="zelle-info">Send <strong>$${links.cashapp.amount}</strong> to Cash App handle <strong>${links.cashapp.handle}</strong></div>
+        <a class="pay-link cashapp-link" href="${links.cashapp.profile_url}" onclick="return openPayLink(event, '${links.cashapp.profile_url}')">Open Cash App →</a>
       `;
     }
     if (links.zelle) {

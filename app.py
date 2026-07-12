@@ -31,6 +31,7 @@ def init_db():
             venmo_handle TEXT,
             cashapp_handle TEXT,
             zelle_handle TEXT,
+            collector_pin TEXT,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP
         );
         CREATE TABLE IF NOT EXISTS items (
@@ -98,6 +99,7 @@ def create_bill():
     venmo = data.get("venmo_handle", "").strip() or None
     cashapp = data.get("cashapp_handle", "").strip() or None
     zelle = data.get("zelle_handle", "").strip() or None
+    collector_pin = data.get("collector_pin", "").strip() or None
 
     if not items:
         return jsonify({"error": "A bill needs at least one item."}), 400
@@ -105,9 +107,9 @@ def create_bill():
     bill_id = uuid.uuid4().hex[:10]
     conn = get_db()
     conn.execute(
-        "INSERT INTO bills (bill_id, restaurant_name, tax, venmo_handle, cashapp_handle, zelle_handle) "
-        "VALUES (?, ?, ?, ?, ?, ?)",
-        (bill_id, restaurant_name, tax, venmo, cashapp, zelle)
+        "INSERT INTO bills (bill_id, restaurant_name, tax, venmo_handle, cashapp_handle, zelle_handle, collector_pin) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (bill_id, restaurant_name, tax, venmo, cashapp, zelle, collector_pin)
     )
     for item in items:
         item_id = uuid.uuid4().hex[:10]
@@ -167,6 +169,7 @@ def bill_data(bill_id):
         "claims": claims_list,
         "people": people_data,
         "handles_set": {k: v is not None for k, v in handles.items()},
+        "requires_pin": bill["collector_pin"] is not None,
     })
 
 
@@ -180,12 +183,63 @@ def claim_items(bill_id):
         return jsonify({"error": "Please provide a name."}), 400
 
     conn = get_db()
+
+    # Items already claimed by someone else are off-limits via this normal
+    # claim path — but if this person is ALREADY a legitimate co-claimer
+    # on a shared item (via join-split), re-submitting it here shouldn't
+    # be treated as a conflict with themselves.
+    others_rows = conn.execute(
+        "SELECT DISTINCT item_id FROM claims WHERE bill_id = ? AND person != ?",
+        (bill_id, person)
+    ).fetchall()
+    taken_by_others = {row["item_id"] for row in others_rows}
+
+    mine_rows = conn.execute(
+        "SELECT DISTINCT item_id FROM claims WHERE bill_id = ? AND person = ?",
+        (bill_id, person)
+    ).fetchall()
+    already_mine = {row["item_id"] for row in mine_rows}
+
+    conflicts = [i for i in item_ids if i in taken_by_others and i not in already_mine]
+    if conflicts:
+        conn.close()
+        return jsonify({"error": "One of those items was just claimed by someone else — refresh and try again."}), 409
+
     # Replace this person's claims wholesale — simpler than diffing, and the
     # frontend always sends the person's full current selection.
     conn.execute("DELETE FROM claims WHERE bill_id = ? AND person = ?", (bill_id, person))
     for item_id in item_ids:
         conn.execute("INSERT INTO claims (bill_id, item_id, person) VALUES (?, ?, ?)", (bill_id, item_id, person))
     conn.commit()
+    conn.close()
+
+    return jsonify({"status": "ok"})
+
+
+@app.route("/bill/<bill_id>/join-split", methods=["POST"])
+def join_split(bill_id):
+    """Explicitly opt into sharing an item someone else already claimed —
+    unlike the normal claim path, this deliberately allows multiple people
+    on the same item, since the person had to confirm it on the frontend
+    first (not something that happens by accident)."""
+    data = request.json or {}
+    person = data.get("person", "").strip()
+    item_id = data.get("item_id", "").strip()
+
+    if not person or not item_id:
+        return jsonify({"error": "Missing person or item."}), 400
+
+    conn = get_db()
+    already_claiming = conn.execute(
+        "SELECT 1 FROM claims WHERE bill_id = ? AND item_id = ? AND person = ?",
+        (bill_id, item_id, person)
+    ).fetchone()
+    if not already_claiming:
+        conn.execute(
+            "INSERT INTO claims (bill_id, item_id, person) VALUES (?, ?, ?)",
+            (bill_id, item_id, person)
+        )
+        conn.commit()
     conn.close()
 
     return jsonify({"status": "ok"})
@@ -217,11 +271,21 @@ def set_paid(bill_id):
     data = request.json or {}
     person = data.get("person", "").strip()
     paid = bool(data.get("paid", False))
+    submitted_pin = data.get("pin", "").strip()
 
     if not person:
         return jsonify({"error": "Please provide a name."}), 400
 
     conn = get_db()
+    bill = conn.execute("SELECT collector_pin FROM bills WHERE bill_id = ?", (bill_id,)).fetchone()
+    if not bill:
+        conn.close()
+        return jsonify({"error": "Bill not found."}), 404
+
+    if bill["collector_pin"] and submitted_pin != bill["collector_pin"]:
+        conn.close()
+        return jsonify({"error": "Incorrect PIN. Only whoever's collecting can mark payments as received."}), 403
+
     conn.execute(
         "INSERT INTO paid_status (bill_id, person, paid) VALUES (?, ?, ?) "
         "ON CONFLICT(bill_id, person) DO UPDATE SET paid = excluded.paid",

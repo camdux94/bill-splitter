@@ -260,6 +260,11 @@ body {
   transition: border-color 0.15s, background 0.15s;
 }
 .item-check.selected { border-color: var(--pine); background: var(--pine-wash); }
+.item-check.taken { cursor: default; background: var(--paper-alt); }
+.item-check.taken input[type="checkbox"] { opacity: 0.35; }
+.item-check.taken .iprice { opacity: 0.5; }
+.item-check.taken .iname { color: var(--ink-soft); }
+.split-link { color: var(--pine); text-decoration: underline; cursor: pointer; font-weight: 600; }
 .item-check input[type="checkbox"] {
   width: 19px; height: 19px; accent-color: var(--pine); flex-shrink: 0;
 }
@@ -415,6 +420,7 @@ body {
   font-weight: 600; margin-bottom: 10px; border-radius: var(--radius-sm);
 }
 #pay-page .pay-link.venmo { background: var(--pine-wash); color: var(--pine-dark); }
+#pay-page .pay-link.cashapp-link { background: var(--amber-wash); color: var(--amber-dark); }
 #pay-page .zelle-info {
   text-align: center; font-family: var(--font-mono); font-size: 13px;
   color: var(--ink-soft); padding: 12px; background: var(--paper-alt);
