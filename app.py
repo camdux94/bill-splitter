@@ -58,6 +58,18 @@ def init_db():
             paid INTEGER DEFAULT 0,
             PRIMARY KEY (bill_id, person)
         );
+        CREATE TABLE IF NOT EXISTS apple_cash_requests (
+            bill_id TEXT,
+            person TEXT,
+            phone_number TEXT,
+            PRIMARY KEY (bill_id, person)
+        );
+        CREATE TABLE IF NOT EXISTS payment_method_choice (
+            bill_id TEXT,
+            person TEXT,
+            method TEXT,
+            PRIMARY KEY (bill_id, person)
+        );
     """)
     conn.commit()
     conn.close()
@@ -135,12 +147,16 @@ def bill_data(bill_id):
     claims = conn.execute("SELECT * FROM claims WHERE bill_id = ?", (bill_id,)).fetchall()
     tips_rows = conn.execute("SELECT * FROM tips WHERE bill_id = ?", (bill_id,)).fetchall()
     paid_rows = conn.execute("SELECT * FROM paid_status WHERE bill_id = ?", (bill_id,)).fetchall()
+    apple_cash_rows = conn.execute("SELECT * FROM apple_cash_requests WHERE bill_id = ?", (bill_id,)).fetchall()
+    method_rows = conn.execute("SELECT * FROM payment_method_choice WHERE bill_id = ?", (bill_id,)).fetchall()
     conn.close()
 
     items_list = [dict(i) for i in items]
     claims_list = [dict(c) for c in claims]
     tips = {r["person"]: r["tip_amount"] for r in tips_rows}
     paid = {r["person"]: bool(r["paid"]) for r in paid_rows}
+    apple_cash = {r["person"]: r["phone_number"] for r in apple_cash_rows}
+    payment_methods = {r["person"]: r["method"] for r in method_rows}
 
     tally = compute_tally(items_list, claims_list, bill["tax"], tips)
     bill_subtotal = tally.pop("_bill_subtotal", 0)
@@ -158,6 +174,8 @@ def bill_data(bill_id):
             **t,
             "paid": paid.get(person, False),
             "payment_links": links,
+            "apple_cash_number": apple_cash.get(person),
+            "payment_method": payment_methods.get(person),
         }
 
     return jsonify({
@@ -240,6 +258,59 @@ def join_split(bill_id):
             (bill_id, item_id, person)
         )
         conn.commit()
+    conn.close()
+
+    return jsonify({"status": "ok"})
+
+
+@app.route("/bill/<bill_id>/apple-cash", methods=["POST"])
+def request_apple_cash(bill_id):
+    """Records that a person wants to pay via Apple Cash and leaves their
+    number for the collector — there's no way to automate Apple Cash
+    itself, so this just saves the collector from having to ask/search for
+    the right contact before requesting money in Messages."""
+    data = request.json or {}
+    person = data.get("person", "").strip()
+    phone_number = data.get("phone_number", "").strip()
+
+    if not person or not phone_number:
+        return jsonify({"error": "Please provide your phone number."}), 400
+
+    conn = get_db()
+    conn.execute(
+        "INSERT INTO apple_cash_requests (bill_id, person, phone_number) VALUES (?, ?, ?) "
+        "ON CONFLICT(bill_id, person) DO UPDATE SET phone_number = excluded.phone_number",
+        (bill_id, person, phone_number)
+    )
+    conn.execute(
+        "INSERT INTO payment_method_choice (bill_id, person, method) VALUES (?, ?, 'apple_cash') "
+        "ON CONFLICT(bill_id, person) DO UPDATE SET method = excluded.method",
+        (bill_id, person)
+    )
+    conn.commit()
+    conn.close()
+
+    return jsonify({"status": "ok"})
+
+
+@app.route("/bill/<bill_id>/payment-method", methods=["POST"])
+def set_payment_method(bill_id):
+    """Records which payment method a person tapped/selected on the Pay
+    page, so the collector can see at a glance who's using what."""
+    data = request.json or {}
+    person = data.get("person", "").strip()
+    method = data.get("method", "").strip()
+
+    if not person or not method:
+        return jsonify({"error": "Missing person or method."}), 400
+
+    conn = get_db()
+    conn.execute(
+        "INSERT INTO payment_method_choice (bill_id, person, method) VALUES (?, ?, ?) "
+        "ON CONFLICT(bill_id, person) DO UPDATE SET method = excluded.method",
+        (bill_id, person, method)
+    )
+    conn.commit()
     conn.close()
 
     return jsonify({"status": "ok"})

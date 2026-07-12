@@ -497,3 +497,19 @@ body {
   margin: 0; background: var(--amber); color: var(--ink);
 }
 #pay-page .pay-method-boxed .pay-link.cashapp-link:hover { background: var(--amber-dark); color: var(--paper); }
+
+.apple-cash-confirmed {
+  padding: 12px; background: var(--pine-wash); border: 1.5px solid var(--pine);
+  border-radius: var(--radius-sm); font-size: 12px; color: var(--pine-dark);
+  line-height: 1.5; margin-bottom: 0.75rem;
+}
+
+.method-badge {
+  display: inline-block; font-family: var(--font-mono); font-size: 10px;
+  font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
+  padding: 4px 10px; border-radius: 20px; margin-top: 6px;
+  background: var(--pine-wash); color: var(--pine-dark); border: 1px solid var(--pine);
+}
+.method-badge.unselected {
+  background: var(--paper-alt); color: var(--ink-faint); border-color: var(--line);
+}

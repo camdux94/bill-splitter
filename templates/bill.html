@@ -96,7 +96,7 @@
       <p class="hint" style="margin-top: 0; margin-bottom: 0.75rem;">Apple Cash can't be prefilled from outside Messages — enter your number and whoever's collecting can request the exact amount from you directly.</p>
       <div id="apple-cash-status"></div>
       <input type="tel" id="apple-cash-number" class="field" placeholder="Your phone number" style="margin-bottom: 0.5rem;" />
-      <button class="btn btn-ghost" onclick="submitAppleCash()">I'll pay with Apple Cash</button>
+      <button class="btn btn-ghost" id="apple-cash-submit-btn" onclick="submitAppleCash()">I'll pay with Apple Cash</button>
     </div>
     <button class="btn btn-ghost" onclick="closePayPage()">← Back</button>
   </div>
@@ -332,6 +332,11 @@ function renderTally() {
       ? `<a class="pay-link" href="sms:${p.apple_cash_number}" onclick="return openPayLink(event, 'sms:${p.apple_cash_number}')">Request $${p.total.toFixed(2)} via Apple Cash — ${p.apple_cash_number}</a>`
       : '';
 
+    const methodLabels = { venmo: 'Venmo', cashapp: 'Cash App', zelle: 'Zelle', apple_cash: 'Apple Cash' };
+    const methodBadge = p.payment_method
+      ? `<div class="method-badge">${methodLabels[p.payment_method] || p.payment_method}</div>`
+      : `<div class="method-badge unselected">No method selected yet</div>`;
+
     // Build the list of items this person is on the hook for, noting
     // when an item is split with someone else and what their actual share is.
     const myItems = billData.items.filter(item =>
@@ -354,6 +359,7 @@ function renderTally() {
           <div class="person-name">${person}</div>
           <div class="person-amount">$${p.total.toFixed(2)}</div>
         </div>
+        ${methodBadge}
         ${itemsHtml}
         <div class="person-meta">subtotal $${p.subtotal.toFixed(2)} + tax $${p.tax_share.toFixed(2)} + tip $${p.tip.toFixed(2)} (${p.tip_percent}%)</div>
         <div class="pay-links">
@@ -402,6 +408,27 @@ function openPayLink(event, url) {
   return false;
 }
 
+function selectPaymentMethod(event, method, url) {
+  fetch('/bill/' + billId + '/payment-method', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ person: currentPerson, method })
+  }).then(() => refreshData());
+  return openPayLink(event, url);
+}
+
+function selectZelle(event) {
+  event.preventDefault();
+  fetch('/bill/' + billId + '/payment-method', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ person: currentPerson, method: 'zelle' })
+  }).then(() => {
+    refreshData();
+    openPayPage();
+  });
+}
+
 function openPayPage() {
   const me = billData ? billData.people[currentPerson] : null;
   const linksWrap = document.getElementById('pay-page-links');
@@ -420,7 +447,7 @@ function openPayPage() {
       html += `
         <div class="pay-method">
           <div class="pay-method-label">Venmo</div>
-          <a class="pay-link venmo" href="${links.venmo}" onclick="return openPayLink(event, '${links.venmo}')">Pay $${me.total.toFixed(2)} — opens prefilled</a>
+          <a class="pay-link venmo" href="${links.venmo}" onclick="return selectPaymentMethod(event, 'venmo', '${links.venmo}')">Pay $${me.total.toFixed(2)} — opens prefilled</a>
         </div>
       `;
     }
@@ -429,7 +456,7 @@ function openPayPage() {
         <div class="pay-method-boxed">
           <div class="pay-method-label">Cash App</div>
           <div class="pay-method-text">Send $${links.cashapp.amount} to Cash App handle $${links.cashapp.handle}</div>
-          <a class="pay-link cashapp-link" href="${links.cashapp.profile_url}" onclick="return openPayLink(event, '${links.cashapp.profile_url}')">Open Cash App →</a>
+          <a class="pay-link cashapp-link" href="${links.cashapp.profile_url}" onclick="return selectPaymentMethod(event, 'cashapp', '${links.cashapp.profile_url}')">Open Cash App →</a>
         </div>
       `;
     }
@@ -438,6 +465,7 @@ function openPayPage() {
         <div class="pay-method">
           <div class="pay-method-label">Zelle</div>
           <div class="pay-method-detail">${links.zelle.handle} — send $${links.zelle.amount}</div>
+          <button class="btn btn-ghost" onclick="selectZelle(event)">I'll pay with Zelle</button>
         </div>
       `;
     }
@@ -452,7 +480,7 @@ function openPayPage() {
   // Show whether they've already submitted a number for Apple Cash
   const statusEl = document.getElementById('apple-cash-status');
   if (me && me.apple_cash_number) {
-    statusEl.innerHTML = `<div class="hint">You've shared ${me.apple_cash_number} — whoever's collecting can request from you directly.</div>`;
+    statusEl.innerHTML = `<div class="apple-cash-confirmed">✓ Saved — ${me.apple_cash_number} is visible to whoever's collecting on their Group Tally tab. They'll request the money from you directly in Messages.</div>`;
   } else {
     statusEl.innerHTML = '';
   }
@@ -468,6 +496,10 @@ function submitAppleCash() {
   const number = document.getElementById('apple-cash-number').value.trim();
   if (!number) return;
 
+  const btn = document.getElementById('apple-cash-submit-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Saving...';
+
   fetch('/bill/' + billId + '/apple-cash', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -475,10 +507,17 @@ function submitAppleCash() {
   })
   .then(res => res.json().then(body => ({ ok: res.ok, body })))
   .then(({ ok, body }) => {
-    if (!ok) { alert(body.error || 'Could not save your number.'); return; }
+    btn.disabled = false;
+    if (!ok) {
+      btn.textContent = "I'll pay with Apple Cash";
+      alert(body.error || 'Could not save your number.');
+      return;
+    }
+    btn.textContent = 'Saved ✓';
     document.getElementById('apple-cash-number').value = '';
     refreshData();
     openPayPage();
+    setTimeout(() => { btn.textContent = "I'll pay with Apple Cash"; }, 2500);
   });
 }
 
